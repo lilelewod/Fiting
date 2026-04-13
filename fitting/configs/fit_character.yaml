@@ -1,0 +1,59 @@
+
+# ===== 实验基础信息 =====
+run_id: 1
+test_id: 2
+noise_type: 'saltpepper_noise'
+noise_level: 0.6
+
+# ===== 硬件与随机种 =====
+device:
+  train_device: 'cuda:0'  #cuda:0
+  cuda_deterministic: true
+seeds: null
+
+# ===== 几何模型规则 =====
+rule:
+  max_ink: 4
+  max_global_rotation: 0.52359877  # pi / 6
+  max_global_scale: 1.5
+  max_global_translation: 20
+  max_local_translation: 5
+  max_eval_spot: 1
+  max_control: 5
+  max_local_scale: 1.5
+  max_local_rotation: 0.34906585   # pi / 9
+
+# ===== 评估器设置 =====
+estimator:
+  type: 'npre'                #mm ,npre
+  regularization_factor: 1
+  device: null
+  open3d_version: 'legacy'
+  h: 1.0
+  early_rejection: false
+
+
+# ===== 核心寻优算法设置 =====
+fitter:
+  algo_name: 'CCO'          # 一键切换: cco,cs,ala
+  num_instances: 1          # 要拟合多少个实例 (比如笔画数)
+  num_envs: 8              # 并行环境数量
+  episodes_per_env: 10     # 每个环境评估的个体数 (总种群 = 5*5 = 25)
+  max_episode: 100000       # 最大评估次数
+
+# ===== 采集器设置 =====
+collector:
+  name: 'hybrid'
+  num_episodes_per_rollout: 4
+  num_rollouts: 2
+  parallel: true
+  context: 'spawn'
+  reinforcement_episode_size: 30
+  evaluation_episode_size: 10
+
+# ===== 日志与可视化 =====
+record:
+  pulse_size: 1000
+  visualization: 'parallel'
+  use_thread_time: false
+  rotate: true

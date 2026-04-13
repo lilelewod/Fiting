@@ -1,0 +1,47 @@
+# ===== 实验基础信息 =====
+task_type: 'road'           # 标识这是一个 3D 道路拟合任务
+run_id: 1
+# 替换为你要测试的 PLY 点云文件路径
+data_file: 'datasets/road_curve/real/no-deep/no-clustering/2023-Jul-15-05-02-50/hull_marking-alpha0.2-filtered0.2.ply'
+
+# ===== 硬件与随机种子 =====
+device:
+  train_device: 'cpu'  
+  cuda_deterministic: true
+seeds: null
+
+# ===== 评估器设置 =====
+estimator:
+  type: 'npre'               # 可选项: npre, mm
+  horizontal_type: 'Circle'     # 水平平面线型: Line, Circle, 或 Spiral
+  vertical_type: 'Parabola'     # 垂直高程线型: Line 或 Parabola 
+  data_resolution: 0.2          # 真实/合成道路点云的数据分辨率
+  model_resolution: 0.06        # 模型分辨率 (建议小于 0.5 * data_resolution)
+  early_rejection: false        # 提前拒绝开关 (搭配软惩罚机制)
+  regularization_factor: 1.0    # NPRE 正则化因子
+  open3d_version: 'legacy'
+
+# ===== 核心寻优算法设置 =====
+fitter:
+  algo_name: 'cco'               # 一键切换算法: cco, cs, ala
+  num_instances: 4              # 实例数量：例如要拟合 2 条车道线就填 2
+  num_envs: 8                   # 并行进程数量
+  episodes_per_env: 20          # 每个环境单词处理的个体数 (总种群 = 4*20 = 80)
+  max_episode: 250000          # 最大评估次数 
+
+# ===== 采集器设置 =====
+collector:
+  name: 'hybrid'
+  num_episodes_per_rollout: 4
+  num_rollouts: 2
+  parallel: true
+  context: 'spawn'
+  reinforcement_episode_size: 30
+  evaluation_episode_size: 10
+
+# ===== 日志与可视化 =====
+record:
+  pulse_size: 2000              # 终端每迭代多少次打印一次详细信息
+  visualization: 'parallel'     # 并行绘图
+  use_thread_time: false
+  verbose: true

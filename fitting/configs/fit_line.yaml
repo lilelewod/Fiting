@@ -1,0 +1,51 @@
+
+# ===== 实验基础信息 =====
+task_type: 'line'           #  新增：告诉 main.py 这是一个直线拟合任务
+run_id: 1
+noise_level: 0.6            # 如果直线没有噪声，可以设为 0
+data_file: 'datasets/line/Pami2_fiveline.mat'  # 直线点云的数据路径
+
+# ===== 硬件与随机种 =====
+device:
+  train_device: 'cuda:0'
+  cuda_deterministic: true
+seeds: null
+
+# ===== 直线模型规则 (根据您 fit_line.py 里的 rule 字典修改) =====
+rule:
+  max_length: 50.0
+  max_translation: 10.0
+  max_rotation: 3.1415926
+  # ... 其他针对直线的参数 ...
+
+# ===== 评估器设置 =====
+estimator:
+  type: 'npre'
+  regularization_factor: 1
+  device: null
+  open3d_version: 'legacy'
+  h: 0.0
+  early_rejection: true
+
+# ===== 核心寻优算法设置 =====
+fitter:
+  algo_name: 'cco'          # cco cs ala 
+  num_instances: 5          # 如果是五线段拟合 (Pami2_fiveline)，这里就填 5！
+  num_envs: 8              # 并行环境数量
+  episodes_per_env: 10    # 每个环境评估的个体数 (总种群 = 8*10 = 80)
+  max_episode: 50000    # 直线拟合通常更快收敛，所以可以适当减少最大评估次数
+
+# ===== 采集器与日志 (保持不变) =====
+collector:
+  name: 'hybrid'
+  num_episodes_per_rollout: 4
+  num_rollouts: 2
+  parallel: true
+  context: 'spawn'
+  reinforcement_episode_size: 30
+  evaluation_episode_size: 10
+record:
+  pulse_size: 1000
+  visualization: 'parallel'
+  use_thread_time: false
+  rotate: true
