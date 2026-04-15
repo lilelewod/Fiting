@@ -25,7 +25,6 @@ estimator:
   device: null
   open3d_version: 'legacy'
   h: 0.0
-  early_rejection: true
 
 # ===== 核心寻优算法设置 =====
 fitter:

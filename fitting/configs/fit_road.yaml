@@ -17,7 +17,6 @@ estimator:
   vertical_type: 'Parabola'     # 垂直高程线型: Line 或 Parabola 
   data_resolution: 0.2          # 真实/合成道路点云的数据分辨率
   model_resolution: 0.06        # 模型分辨率 (建议小于 0.5 * data_resolution)
-  early_rejection: false        # 提前拒绝开关 (搭配软惩罚机制)
   regularization_factor: 1.0    # NPRE 正则化因子
   open3d_version: 'legacy'
 

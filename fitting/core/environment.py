@@ -35,25 +35,10 @@ class Environment:
         assert action.max() <= 1 and action.min() >= -1
 
         trait = self.estimator.parse(action=action)
-        early_rejection = self.cfg['estimator'].get('early_rejection', False)
-        if early_rejection:
-            dividing_levels = (0, -1)
-            for dividing_level in dividing_levels:
-                self.reset()
-                self.estimator.current_dividing_level = dividing_level
-                self.estimator.generate()
-                score, single_model_error = self.estimator.get_score(), self.estimator.get_single_model_error()
-                # # relax the early rejection criterion with self.estimator.resolution
-                # too_error = single_model_error > (self.record.best_single_model_error + self.estimator.resolution)
-                # if dividing_level == 0 and too_error and np.random.rand() < 0.9:
-                if dividing_level == 0 and single_model_error > self.record.best_single_model_error: # early rejection
-                    score = -1  # early rejected
-                    break
-        else:
-            self.reset()
-            self.estimator.current_dividing_level = -1
-            self.estimator.generate()
-            score = self.estimator.score
+        self.reset()
+        self.estimator.current_dividing_level = -1
+        self.estimator.generate()
+        score = self.estimator.score
         better = self.record.update(score, self, trait=trait, action=action)
         return score, better
 

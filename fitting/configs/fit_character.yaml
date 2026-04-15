@@ -30,7 +30,6 @@ estimator:
   device: null
   open3d_version: 'legacy'
   h: 1.0
-  early_rejection: false
 
 
 # ===== 核心寻优算法设置 =====
