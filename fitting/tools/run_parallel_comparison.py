@@ -19,7 +19,7 @@ os.chdir(PROJECT_ROOT)
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, required=True)
-    parser.add_argument('--task', type=str, choices=['auto', 'character', 'road'], default='auto')
+    parser.add_argument('--task', type=str, choices=['auto', 'character', '3d', 'road'], default='auto')
     parser.add_argument('--envs', type=int, nargs='+', default=[1, 8])
     parser.add_argument('--runs', type=int, default=3)
     parser.add_argument('--algo', type=str, default=None, choices=['cco', 'cs', 'ala'])
@@ -55,14 +55,14 @@ def infer_task(cfg):
     task_type = cfg.get('task_type')
     if task_type == 'character':
         return 'character'
-    if task_type == 'road':
-        return 'road'
+    if task_type in {'road', '3d'}:
+        return '3d'
     if {'run_id', 'test_id', 'noise_type', 'noise_level'}.issubset(cfg):
         return 'character'
     data_file = str(cfg.get('data_file', ''))
     if data_file.endswith('.ply'):
-        return 'road'
-    raise ValueError('Unable to infer task type from config. Please pass --task character or --task road.')
+        return '3d'
+    raise ValueError('Unable to infer task type from config. Please pass --task character or --task 3d.')
 
 
 def load_base_config(config_path, algo=None, estimator=None):
@@ -102,21 +102,24 @@ def prepare_character_cfg(base_cfg, load_runtime):
     return cfg, task_module.run_experiment
 
 
-def prepare_road_cfg(base_cfg, load_runtime):
+def prepare_3d_cfg(base_cfg, load_runtime):
     cfg = deepcopy(base_cfg)
     algo = cfg['fitter']['algo_name']
     data_file = cfg['data_file']
     run_id = cfg['run_id']
     data_path = Path(data_file)
+    cfg.setdefault('model', {})
+    model_type = str(cfg['model'].get('type', 'curve')).lower()
 
+    cfg['task_type'] = '3d'
     cfg['estimator']['data_file'] = data_file
-    cfg['record']['root_dir'] = f'./outputs/{algo}/road/{data_path.parent.name}/{data_path.stem}/run_{run_id}/'
+    cfg['record']['root_dir'] = f'./outputs/{algo}/3d/{model_type}/{data_path.parent.name}/{data_path.stem}/run_{run_id}/'
     if not load_runtime:
         return cfg, None
 
-    import fit_road as task_module
+    import fit_3d as task_module
 
-    cfg['estimator']['rule_class'] = task_module.Rule
+    cfg['estimator']['rule_class'] = task_module.get_rule_class(cfg)
     cfg['estimator']['estimator_class'] = task_module.get_estimator_class(cfg)
     cfg['estimator']['estimator_instance'] = None
     cfg['estimator']['load_data_fn'] = task_module.load_data
@@ -126,8 +129,8 @@ def prepare_road_cfg(base_cfg, load_runtime):
 def prepare_task(base_cfg, task, load_runtime):
     if task == 'character':
         return prepare_character_cfg(base_cfg, load_runtime)
-    if task == 'road':
-        return prepare_road_cfg(base_cfg, load_runtime)
+    if task in {'3d', 'road'}:
+        return prepare_3d_cfg(base_cfg, load_runtime)
     raise ValueError(f'Unsupported task: {task}')
 
 

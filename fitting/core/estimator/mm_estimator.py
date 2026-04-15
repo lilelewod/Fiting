@@ -113,7 +113,12 @@ class MeanMeasureEstimator:
     def load_data(self):
         load_data_fn = self.cfg['estimator']['load_data_fn']
         data = load_data_fn(self)
-        self.create_kdtree(data)
+        self.raw_data = data.copy()
+        self.dimension = data.shape[1]
+        if self.data_resolution is None:
+            self.preprocess(data)
+        else:
+            self.create_kdtree(data)
 
     def preprocess(self, data, synthetic=False):
         assert data.shape[0] > 1
@@ -146,6 +151,8 @@ class MeanMeasureEstimator:
         self.dimension = data.shape[1]
         self.num_data_points = data.shape[0]
         self.data_kDTree = KDTree(data)
+        self.min_point = np.min(data, axis=0)
+        self.max_point = np.max(data, axis=0)
 
     def set_rule(self):
         rule_class = self.cfg['estimator']['rule_class']

@@ -64,7 +64,7 @@ def load_image_data(estimator):
     estimator.data_resolution = 1.       
     return data
         
-def load_road_data(estimator):
+def load_3d_pointcloud_data(estimator):
     import open3d as o3d
     import numpy as np
     data_path = estimator.cfg['estimator']['data_file']
@@ -76,3 +76,7 @@ def load_road_data(estimator):
         
     points = np.asarray(pcd.points, dtype=np.float32)
     return points
+
+
+def load_road_data(estimator):
+    return load_3d_pointcloud_data(estimator)
