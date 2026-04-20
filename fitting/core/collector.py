@@ -15,7 +15,6 @@ def get_env_fn(cfg, estimator, env_id):
     def init_env():
         env = Env(cfg=cfg, estimator=estimator, env_id=env_id)
         return env
-
     return init_env
 
 
@@ -47,16 +46,16 @@ class Collector:
 
     def __init__(self, cfg, num_envs):
         self.cfg = cfg
-        self.num_envs = num_envs
+        self.num_envs = num_envs   
         self.env_fns = None
 
-        self.estimator = self.cfg['estimator']['estimator_class'](self.cfg)
-
-        self.action_dim = self.estimator.num_variables()
-
+        self.estimator = self.cfg['estimator']['estimator_class'](self.cfg)         
+     
+        self.action_dim = self.estimator.num_variables()             
+       
     def get_action_dim(self):
-        return self.action_dim
-
+        return self.action_dim     
+  
     def _create_state(self) -> None:
         r"""
         Overview:
@@ -65,7 +64,7 @@ class Collector:
         self._pipe_parents, self._pipe_children = {}, {}
         self._subprocesses = {}
         for env_id in range(self.num_envs):
-            self._create_env_subprocess(env_id)
+            self._create_env_subprocess(env_id)         
         self._waiting_env = {'step': set()}
         self._closed = False
 
@@ -77,7 +76,7 @@ class Collector:
             args=(
                 self._pipe_parents[env_id],
                 self._pipe_children[env_id],
-                CloudPickleWrapper(self.env_fns[env_id]),
+                CloudPickleWrapper(self.env_fns[env_id]),              
                 self.method_name_list,
             ),
             daemon=True,
@@ -94,18 +93,18 @@ class Collector:
     def worker_fn_robust(
             parent,
             child,
-            env_fn_wrapper,
+            env_fn_wrapper,            
             method_name_list,
     ) -> None:
         torch.set_num_threads(1)  # TODO: could be tunned
         env_fn = env_fn_wrapper.data
-        env = env_fn()
+        env = env_fn()                              
         parent.close()
-
+       
         def set_seed_fn(*args, **kwargs):
             timestep = env.set_seed(*args, **kwargs)
             return timestep
-
+        
         def launch_fn(*args, **kwargs):
             env.launch(*args, **kwargs)
 
@@ -117,7 +116,7 @@ class Collector:
             return env.estimate(*args, **kwargs)
 
         def update_fn(*args, **kwargs):
-            return env.update(*args, **kwargs)
+            return env.update(*args, **kwargs)                        
 
         while True:
             try:
@@ -138,7 +137,7 @@ class Collector:
                     elif cmd == 'estimate':
                         ret = estimate_fn(*args, **kwargs)
                     elif cmd == 'update':
-                        ret = update_fn(*args, **kwargs)
+                        ret = update_fn(*args, **kwargs)                                                                                                        
                     elif args is None and kwargs is None:
                         ret = getattr(env, cmd)()
                     else:
@@ -178,24 +177,18 @@ class Collector:
             p.terminate()
         for _, p in self._pipe_parents.items():
             p.close()
-
+            
     def launch(self):
         data_cloud = deepcopy(self.estimator.get_data())
         self.env_fns = [get_env_fn(self.cfg, self.estimator, i) for i in range(self.num_envs)]
         self._create_state()
         return data_cloud
-
+        
     def poll(self, env_id):
         return self._pipe_parents[env_id].poll()
-
+    
     def receive(self, env_id):
-        ret = self._pipe_parents[env_id].recv()
-        if isinstance(ret, Exception):
-            raise ret
-        return ret
-
-
-
+        return self._pipe_parents[env_id].recv()
 
     def estimate(self, env_id, actions):
         self._pipe_parents[env_id].send(['estimate', [actions], {}])
@@ -203,24 +196,28 @@ class Collector:
     def reset(self):
         for env_id in range(self.num_envs):
             self._pipe_parents[env_id].send(['reset', [], {}])
+        self.receive_all()     
+
+    def update(self, record):
+        supporters, sum_errors, num_points = record.get_base()
+        for env_id in range(self.num_envs):
+            self._pipe_parents[env_id].send(['update', [supporters, sum_errors, num_points], {}])
         self.receive_all()
 
-    def update(self, estimator):
-        model = deepcopy(estimator.model)
-        labels = deepcopy(estimator.labels)
-        sum_errors = deepcopy(estimator.sum_errors)
-        nearest_points = deepcopy(estimator.nearest_points)
-        instance_index = deepcopy(estimator.instance_index)
-        for env_id in range(self.num_envs):
-            self._pipe_parents[env_id].send(['update', [model, sum_errors, nearest_points, labels, instance_index], {}])
-        self.receive_all()
+    # def update(self, estimator, instance_index):
+    #     model = deepcopy(estimator.model)
+    #     labels = deepcopy(estimator.labels)
+    #     sum_errors = deepcopy(estimator.sum_errors)
+    #     nearest_points = deepcopy(estimator.nearest_points)
+    #     for env_id in range(self.num_envs):
+    #         self._pipe_parents[env_id].send(['update', [model, sum_errors, nearest_points, labels, instance_index], {}])
+    #     self.receive_all()
 
     def receive_all(self):
         for env_id in range(self.num_envs):
             try:
-                ret = self._pipe_parents[env_id].recv()
-                # 同样增加这里的判断
-                if isinstance(ret, Exception):
-                    raise ret 
+                self._pipe_parents[env_id].recv()
             except pickle.UnpicklingError as e:
-                assert False
+                assert False                           
+        
+            

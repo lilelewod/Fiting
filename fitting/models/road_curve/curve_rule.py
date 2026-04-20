@@ -1,4 +1,4 @@
-from ..rule import ModelRule
+from ..rule import ModelRule, Token
 import math
 import numpy as np
 from tools.tool import rescale
@@ -157,7 +157,7 @@ class CurveRule(ModelRule):
         lb.length = lower_bound[5]
         upper_bound[5] = max_length
         ub.length = upper_bound[5]
-        
+
         self.lb = lb
         self.ub = ub
         self.lower_bound = lower_bound
@@ -175,6 +175,12 @@ class CurveRule(ModelRule):
 
     def generate(self):
         cloud = self.sample()
+        token = Token(self.estimator.dimension)
+        token.points = cloud
+        token.trait = self.trait
+        token.measure = self.measure(self.trait)
+        token.action = self.action
+        self.estimator.add_token(token)
         return cloud
 
     def sample(self):
@@ -184,8 +190,7 @@ class CurveRule(ModelRule):
         s = trait.length * i
         x, y = self.get_xy(trait, s)
         z = self.get_z(trait, s)
-        cloud = np.ascontiguousarray(np.vstack((x, y, z)).transpose())
-        self.estimator.add_model(new_measure=self.measure(trait), new_model=cloud)
+        cloud = np.ascontiguousarray(np.vstack((x, y, z)).transpose())        
         return cloud
 
     @staticmethod

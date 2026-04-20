@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "justMyCode": true,
+            "justMyCode": false,
             "cwd": "${fileDirName}"
         },
         {
@@ -22,6 +22,7 @@
                 "rules/sampling/tinynurbs/example2/main.py"       
             ],
             "stopAtEntry": false,
+            "justMyCode": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,

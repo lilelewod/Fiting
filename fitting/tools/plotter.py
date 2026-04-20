@@ -65,14 +65,11 @@ class Plotter:
             # self.ax.set_axis_off()
         else:
             assert False
-        # self.fig2 = plt.figure()
-        # self.ax2 = self.fig2.add_subplot(222)
-        # # self.fig3 = plt.figure()
-        # self.ax3 = self.fig2.add_subplot(223)
-        # self.ax4 = self.fig2.add_subplot(224)
-        self.fig2 = plt.figure(figsize=(10, 4))
-        self.ax3 = self.fig2.add_subplot(121) # 1行2列的第1个位置 (左侧: score vs time)
-        self.ax4 = self.fig2.add_subplot(122) # 1行2列的第2个位置 (右侧: score vs episode)
+        self.fig2 = plt.figure()
+        self.ax2 = self.fig2.add_subplot(222)
+        # self.fig3 = plt.figure()
+        self.ax3 = self.fig2.add_subplot(223)
+        self.ax4 = self.fig2.add_subplot(224)
         if pipe is None:
             plt.ion()
         else:
@@ -133,15 +130,15 @@ class Plotter:
         # set_axes_equal(self.ax)             
 
         if data.size > 0:
-            self.ax.scatter(data[:, 0], data[:, 1], data[:, 2], c='gray', marker='.', s=2., alpha=0.3)
+            self.ax.scatter(data[:, 0], data[:, 1], data[:, 2], c='black', marker='.', s=10.)
 
-        if model.size > 0:
+        if model.size > 0:      
             if color is None:
                 self.ax.scatter(model[:, 0], model[:, 1], model[:, 2], c='g', marker='.', s=50.)
             else:
                 assert color.shape[0] == model.shape[0]
                 self.ax.scatter(model[:, 0], model[:, 1], model[:, 2], c=color, cmap='rainbow', marker='.', s=40.)
-        set_axes_equal(self.ax)
+
 
     def plot2d(self, data, model, labels):
         self.ax.cla()

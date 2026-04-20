@@ -2,6 +2,19 @@ import numpy as np
 from copy import copy
 
 
+class Token:  # i.e., model instance
+
+    def __init__(self, dimension):
+        self.points = np.empty((0, dimension), dtype=np.float32)
+        self.supporters = None
+        self.sum_errors = None
+        self.trait = None
+        self.measure = None
+        self.color = np.empty(0, dtype=np.int64)
+        self.image = None
+        self.action = None
+
+
 # Non-terminal rule base
 class Rule:
     name = 'rule'

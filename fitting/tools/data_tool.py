@@ -1,13 +1,72 @@
-def load_ply_data(data_path):
-    assert data_path
-    import open3d as o3d
-    import numpy as np    
+def read_point_cloud(file_name):
+    import numpy as np
+    file_type = file_name[-3:]
+    if 'xyz' == file_type:
+        x, y, z = [], [], []
+        with open(file_name, 'r') as f:
+            for line in f:
+                point = line.split()
+                x.append(float(point[0]))
+                y.append(float(point[1]))
+                z.append(float(point[2]))
+        x = np.array(x)
+        y = np.array(y)
+        z = np.array(z)
+        cloud = np.vstack((x, y, z)).transpose()
+    elif 'ply' == file_type:
+        from .plyfile import PlyData
+        ply_data = PlyData.read(file_name)
+        vertex = ply_data['vertex']
+        (x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
+        cloud = np.vstack((x, y, z)).transpose()
+    # elif 'ply' == file_type:
+    #     ply_data = PlyData.read(file_name)
+    #     vertex = ply_data['vertex']
+    #     (x, y, z, intensity) = (vertex[t] for t in ('x', 'y', 'z', 'intensity'))
+    #     cloud = np.vstack((x, y, z, intensity)).transpose()
+
+    return cloud
+
+def load_ply_data(estimator):
+    cfg = estimator.cfg['estimator']    
+    data_path = cfg['data_file']
+    assert data_path    
+
     print(f'input real-world data from {data_path}')
-    # data = read_point_cloud(data_path)
-    cloud = o3d.io.read_point_cloud(data_path)
-    data = np.asarray(cloud.points)
-    # data = self.compute_convexhull(data)
+
+    # import numpy as np
+    # import open3d as o3d
+    # cloud = o3d.io.read_point_cloud(data_path)
+    # data = np.asarray(cloud.points)
+
+    data = read_point_cloud(data_path)
+    estimator.raw_data = data.copy()
+    voxel_size_for_down_sampling = cfg.get('voxel_size_for_down_sampling', None)
+    if voxel_size_for_down_sampling is None:
+        assert 'data_resolution' in cfg
+        assert 'model_resolution' in cfg
+        estimator.data_resolution = cfg['data_resolution']
+        estimator.model_resolution = cfg['model_resolution']        
+    else:
+        import point_cloud_utils as pcu
+        data = pcu.downsample_point_cloud_on_voxel_grid(voxel_size_for_down_sampling, data)
+        estimator.data_resolution = voxel_size_for_down_sampling
+        estimator.model_resolution = 0.45 * estimator.data_resolution  # should be smaller than 0.5 * data_resolution        
+    estimator.min_point = data.min(0)            
+    estimator.max_point = data.max(0)    
+    estimator.resolution = estimator.model_resolution
     return data
+
+# def load_ply_data(data_path):
+#     assert data_path
+#     import open3d as o3d
+#     import numpy as np    
+#     print(f'input real-world data from {data_path}')
+#     # data = read_point_cloud(data_path)
+#     cloud = o3d.io.read_point_cloud(data_path)
+#     data = np.asarray(cloud.points)
+#     # data = self.compute_convexhull(data)
+#     return data
 
 
 '''
@@ -64,19 +123,3 @@ def load_image_data(estimator):
     estimator.data_resolution = 1.       
     return data
         
-def load_3d_pointcloud_data(estimator):
-    import open3d as o3d
-    import numpy as np
-    data_path = estimator.cfg['estimator']['data_file']
-    
-    # 使用 Open3D 读取点云
-    pcd = o3d.io.read_point_cloud(data_path)
-    if not pcd.has_points():
-        raise ValueError(f"Failed to load point cloud or file is empty: {data_path}")
-        
-    points = np.asarray(pcd.points, dtype=np.float32)
-    return points
-
-
-def load_road_data(estimator):
-    return load_3d_pointcloud_data(estimator)

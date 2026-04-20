@@ -34,18 +34,54 @@ class Environment:
         assert not np.isnan(action).any()
         assert action.max() <= 1 and action.min() >= -1
 
-        trait = self.estimator.parse(action=action)
+        self.estimator.parse(action=action)
+        if self.cfg['estimator'].get('early_rejection', False):  # early rejection
+            self.reset()
+            self.estimator.generate(current_dividing_level=0)  # sample only point from the model instance
+            if self.estimator.score_mm < self.record.best_score_mm: # early rejected
+                score = -1
+                return score, False
+        
         self.reset()
-        self.estimator.current_dividing_level = -1
-        self.estimator.generate()
+        self.estimator.generate(current_dividing_level=-1)
         score = self.estimator.score
-        better = self.record.update(score, self, trait=trait, action=action)
+        better = self.record.update(score, self.estimator)
         return score, better
+    
+    # def react(self, action):
+
+    #     # caution: should normalize the action range to [-1, 1]
+    #     # action = np.tanh(action_n[agent])
+    #     assert not np.isnan(action).any()
+    #     assert action.max() <= 1 and action.min() >= -1
+
+    #     self.estimator.parse(action=action)
+    #     early_rejection = self.cfg['estimator'].get('early_rejection', False)
+    #     if early_rejection:
+    #         dividing_levels = (0, -1)
+    #         for dividing_level in dividing_levels:
+    #             self.reset()
+    #             self.estimator.current_dividing_level = dividing_level
+    #             self.estimator.generate()
+    #             score, single_model_error = self.estimator.get_score(), self.estimator.get_single_model_error()
+    #             # # relax the early rejection criterion with self.estimator.resolution                
+    #             # too_error = single_model_error > (self.record.best_single_model_error + self.estimator.resolution)
+    #             # if dividing_level == 0 and too_error and np.random.rand() < 0.9:
+    #             if dividing_level == 0 and single_model_error > self.record.best_single_model_error: # early rejection
+    #                 score = -1  # early rejected
+    #                 break
+    #     else:
+    #         self.reset()
+    #         self.estimator.current_dividing_level = -1
+    #         self.estimator.generate()
+    #         score = self.estimator.score
+    #     better = self.record.update(score, self.estimator)
+    #     return score, better
 
     def close(self):
         pass
 
-    def update(self, model, sum_errors, nearest_points, labels, instance_index):
-        self.estimator.update(model, sum_errors, nearest_points, labels, instance_index)
+    def update(self, supporters, sum_errors, num_points):
+        self.estimator.update(supporters, sum_errors, num_points)
         self.records.append(self.record)
         self.record = SubRecord(self.cfg, self.env_id)

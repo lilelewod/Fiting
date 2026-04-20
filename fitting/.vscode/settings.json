@@ -2,5 +2,11 @@
     "terminal.integrated.env.linux": {
         "PYTHONPATH": "${workspaceFolder}:${fileDirName}:${PYTHONPATH}",
     },
-    "python.envFile": "${workspaceFolder}/.env",
+    "terminal.integrated.env.windows": {
+        "PYTHONPATH": "${workspaceFolder};${fileDirName};${PYTHONPATH}",
+    },    
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "python-envs.pythonProjects": [],
+    "debug.allowBreakpointsEverywhere": true
 }

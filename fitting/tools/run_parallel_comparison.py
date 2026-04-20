@@ -117,7 +117,7 @@ def prepare_3d_cfg(base_cfg, load_runtime):
     if not load_runtime:
         return cfg, None
 
-    import fit_3d as task_module
+    import fit_point_cloud as task_module
 
     cfg['estimator']['rule_class'] = task_module.get_rule_class(cfg)
     cfg['estimator']['estimator_class'] = task_module.get_estimator_class(cfg)

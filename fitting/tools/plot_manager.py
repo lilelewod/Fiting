@@ -1,5 +1,4 @@
 from .plotter import Plotter, Plotting
-import multiprocessing as mp
 
 
 class PlotManager:
@@ -18,18 +17,20 @@ class PlotManager:
     def initialize_plot(self):
         if self.plot_initialized:
             return
-        mp.freeze_support()
-        ctx = mp.get_context('spawn')
-        self.plotter = Plotter(compared_file=self.compared_file, dimension=self.dimension, log_dir=self.log_dir, rotate=self.rotate)        
-        if self.visualization == 'parallel':
-            self.plot_pipe, plotter_pipe = ctx.Pipe()
-            self.plot_process = ctx.Process(
-                target=self.plotter, args=(plotter_pipe,), daemon=True)
-            self.plot_process.start()
-        elif self.visualization == 'non-parallel':
-            self.plotter()
-        else:
-            assert self.visualization is None
+        if self.visualization is not None:
+            import matplotlib
+            matplotlib.use('TkAgg')   
+            self.plotter = Plotter(compared_file=self.compared_file, dimension=self.dimension, log_dir=self.log_dir, rotate=self.rotate)                
+            if self.visualization == 'parallel':
+                import multiprocessing as mp
+                mp.freeze_support()
+                ctx = mp.get_context('spawn')                                                 
+                self.plot_pipe, plotter_pipe = ctx.Pipe()
+                self.plot_process = ctx.Process(
+                    target=self.plotter, args=(plotter_pipe,), daemon=True)
+                self.plot_process.start()
+            elif self.visualization == 'non-parallel':      
+                self.plotter()
         self.plot_initialized = True
 
     def plot(self, **kwargs):
@@ -44,7 +45,7 @@ class PlotManager:
             p.optimizer_name = self.__class__.__name__
             p.runner_id = kwargs.get('runner_id', 0)
             p.rollout_id = kwargs.get('rollout_id', 0)
-            p.model_color = kwargs.get('model_color', None)
+            p.model_labels = kwargs.get('model_labels', None)
             p.model_image = kwargs.get('model_image', None)
             if self.visualization == 'parallel':
                 self.plot_pipe.send(p)

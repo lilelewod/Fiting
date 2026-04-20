@@ -5,8 +5,8 @@ import torch
 
 from .. import LIB_DATA_PATH
 from .spatial import SpatialModel
-from .spatial_OLD.spatial_model import SpatialModel as SpatialModelOriginal
-from .spatial_OLD.spatial_hist import SpatialHist
+from .spatial_legacy.spatial_model import SpatialModel as SpatialModelOriginal
+from .spatial_legacy.spatial_hist import SpatialHist
 from ..util.general import aeq
 
 

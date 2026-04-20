@@ -26,6 +26,7 @@ rule:
 # ===== 评估器设置 =====
 estimator:
   type: 'npre'                #mm ,npre
+  early_rejection: false
   regularization_factor: 1
   device: null
   open3d_version: 'legacy'
