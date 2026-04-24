@@ -1,6 +1,3 @@
-from .plotter import Plotter, Plotting
-
-
 class PlotManager:
     def __init__(self, visualization=None, compared_file=None, dimension=3, log_dir='', rotate=False):
         self.visualization = visualization
@@ -18,6 +15,7 @@ class PlotManager:
         if self.plot_initialized:
             return
         if self.visualization is not None:
+            from .plotter import Plotter
             import matplotlib
             matplotlib.use('TkAgg')   
             self.plotter = Plotter(compared_file=self.compared_file, dimension=self.dimension, log_dir=self.log_dir, rotate=self.rotate)                
@@ -35,6 +33,7 @@ class PlotManager:
 
     def plot(self, **kwargs):
         if self.visualization is not None:
+            from .plotter import Plotting
             p = Plotting()
             p.data = kwargs.get('data', None)
             p.model = kwargs.get('model', None)
@@ -58,6 +57,7 @@ class PlotManager:
         if model is None:
             return
         if self.visualization is not None:
+            from .plotter import Plotting
             plotting = Plotting()
             plotting.data = data
             plotting.model = model

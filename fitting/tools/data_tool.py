@@ -15,7 +15,7 @@ def read_point_cloud(file_name):
         cloud = np.vstack((x, y, z)).transpose()
     elif 'ply' == file_type:
         try:
-            from .plyfile import PlyData
+            from plyfile import PlyData
 
             ply_data = PlyData.read(file_name)
             vertex = ply_data['vertex']

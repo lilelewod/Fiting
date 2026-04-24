@@ -1,21 +1,33 @@
 import math
-import matplotlib.pyplot as plt
 import numpy as np
 # from estimators.ply.plyfile import PlyData
 # from scipy.cluster._optimal_leaf_ordering import squareform
-from scipy.spatial.distance import pdist, squareform
 # import open3d as o3d
 
 def save_point_cloud(cloud, path):
-    import point_cloud_utils as pcu
+    cloud = np.asarray(cloud, dtype=np.float32)
     if cloud.shape[1] == 2:
-        padding = np.zeros((cloud.shape[0],1))
+        padding = np.zeros((cloud.shape[0], 1), dtype=cloud.dtype)
         cloud = np.hstack((cloud, padding))
-    pcu.save_mesh_v(path, cloud)
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("ply\n")
+        f.write("format ascii 1.0\n")
+        f.write(f"element vertex {cloud.shape[0]}\n")
+        f.write("property float x\n")
+        f.write("property float y\n")
+        f.write("property float z\n")
+        f.write("end_header\n")
+        for point in cloud:
+            f.write(f"{point[0]} {point[1]} {point[2]}\n")
 
 
 def save_triangle_mesh(vertices, faces, path, vertex_colors=None):
-    import open3d as o3d
+    try:
+        import open3d as o3d
+    except ModuleNotFoundError:
+        print(f"skip saving triangle mesh to {path}: open3d is not installed")
+        return
 
     vertices = np.asarray(vertices, dtype=np.float64)
     faces = np.asarray(faces, dtype=np.int32)
@@ -128,6 +140,8 @@ def compute_resolution(cloud, rank=0.05, deduplicate=True):
 #     # show_point_cloud(cloud)
 #     tmp = 0
 def cal_resolution(data):
+    from scipy.spatial.distance import pdist, squareform
+
     dist = pdist(data)
     dist_matrix = squareform(dist)
     resolution = np.min(dist_matrix[np.nonzero(dist_matrix)])
@@ -142,6 +156,8 @@ def get_2D_rotation_matrix(angle, pivot):
 
 
 def show_image(img):
+    import matplotlib.pyplot as plt
+
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.imshow(img)
@@ -149,6 +165,8 @@ def show_image(img):
 
 
 def show_point_cloud(cloud, **kwargs):
+    import matplotlib.pyplot as plt
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.set_xlabel("x")
