@@ -1,8 +1,13 @@
 import argparse
+import sys
 from copy import deepcopy
 from pathlib import Path
 
 import yaml
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from tools.tool import current_timestamp, set_project_root_as_working_directory
 
@@ -10,7 +15,7 @@ set_project_root_as_working_directory(__file__)
 
 from core.estimator.npre_estimator import NPREEstimator
 from core.estimator.mm_estimator import MeanMeasureEstimator
-from tools.data_tool import load_3d_pointcloud_data as load_data
+from tools.data_tool import load_ply_data as load_data
 
 
 def get_rule_class(cfg):
@@ -22,9 +27,9 @@ def get_rule_class(cfg):
 
         return CurveRule
     if model_type == 'surface':
-        from models.surface_patch.surface_patch_rule import SurfacePatchRule
+        from models.surface.rectangle_rule import RectangleRule
 
-        return SurfacePatchRule
+        return RectangleRule
     raise ValueError(f"Unknown 3D model type: {model_type}")
 
 

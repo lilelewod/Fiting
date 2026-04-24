@@ -1,6 +1,6 @@
 
 # ===== 实验基础信息 =====
-task_type: 'line'           #  新增：告诉 main.py 这是一个直线拟合任务
+task_type: 'line'           # 标识这是一个直线拟合任务
 run_id: 1
 noise_level: 0.6            # 如果直线没有噪声，可以设为 0
 data_file: 'datasets/line/Pami2_fiveline.mat'  # 直线点云的数据路径
@@ -11,7 +11,7 @@ device:
   cuda_deterministic: true
 seeds: null
 
-# ===== 直线模型规则 (根据您 fit_line.py 里的 rule 字典修改) =====
+# ===== 直线模型规则 (根据 entrypoints/fit_line.py 里的 Rule 设置调整) =====
 rule:
   max_length: 50.0
   max_translation: 10.0

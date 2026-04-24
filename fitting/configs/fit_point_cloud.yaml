@@ -1,12 +1,12 @@
 # ===== 实验基础信息 =====
-task_type: '3d'             # 标识这是一个通用 3D 点云拟合任务
+task_type: '3d'             # 通用 3D 点云拟合入口
 run_id: 1
 # 替换为你要测试的 PLY 点云文件路径
 # 也可以通过命令行覆盖: --data-file /abs/path/to/input.ply
 data_file: '/home/m25lll/code/nurbsfit/data/input/00873042_lessp/00873042_lessp.ply'
 
 model:
-  type: 'surface'             # 可选: curve, surface；也可命令行覆盖: --model surface
+  type: 'surface'           # 可选: curve, surface；surface 当前使用 rectangle_rule
 
 # ===== 硬件与随机种子 =====
 device:
@@ -17,10 +17,10 @@ seeds: null
 # ===== 评估器设置 =====
 estimator:
   type: 'npre'              # 可选项: npre, mm
-  horizontal_type: 'Circle' # curve 模型下使用: Line, Circle, 或 Spiral
-  vertical_type: 'Parabola' # curve 模型下使用: Line 或 Parabola
+  horizontal_type: 'Circle' # 仅 curve 模型使用: Line, Circle, Spiral
+  vertical_type: 'Parabola' # 仅 curve 模型使用: Line, Parabola
   data_resolution: 0.2      # 输入点云的数据分辨率；可命令行覆盖: --data-resolution
-  model_resolution: 0.06    # 模型分辨率 (建议小于 0.5 * data_resolution)；可命令行覆盖: --model-resolution
+  model_resolution: 0.06    # 模型分辨率；surface/rectangle 也使用这个值控制采样层级
   early_rejection: true
   regularization_factor: 1.0
   open3d_version: 'legacy'
