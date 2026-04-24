@@ -7,7 +7,7 @@ from tools.plot_manager import PlotManager
 import json
 from easydict import EasyDict
 from tools.tool import json_default
-from tools.geometry import save_point_cloud
+from tools.geometry import save_point_cloud, save_triangle_mesh
 import numpy as np
 
 
@@ -86,6 +86,7 @@ class Record(EasyDict):
         self.data_cloud = None
         self.best_score = 0.
         self.best_cloud = None
+        self.best_estimator = None
         self.best_token_set = [None, ] * cfg['fitter']['num_instances']
         self.best_color = None
         self.best_sub_record = -1
@@ -98,6 +99,47 @@ class Record(EasyDict):
         self.base_cloud = None
         self.base_color = None
         self.round = None
+
+    @staticmethod
+    def _grid_faces(rows, cols, offset=0):
+        faces = []
+        for row in range(rows - 1):
+            for col in range(cols - 1):
+                v00 = offset + row * cols + col
+                v01 = v00 + 1
+                v10 = v00 + cols
+                v11 = v10 + 1
+                faces.append([v00, v10, v01])
+                faces.append([v01, v10, v11])
+        return np.asarray(faces, dtype=np.int32)
+
+    def _save_merged_mesh(self):
+        model_cfg = self.cfg.get('model', {})
+        sample_u = int(model_cfg.get('sample_u', 0))
+        sample_v = int(model_cfg.get('sample_v', 0))
+        expected_points = sample_u * sample_v
+        if expected_points <= 0:
+            return
+
+        vertices = []
+        faces = []
+        offset = 0
+        for token in self.best_token_set:
+            if token is None or getattr(token, 'points', None) is None:
+                continue
+            points = np.asarray(token.points)
+            if points.shape[0] != expected_points:
+                return
+            vertices.append(points)
+            faces.append(self._grid_faces(sample_u, sample_v, offset=offset))
+            offset += points.shape[0]
+
+        if not vertices:
+            return
+
+        vertices = np.vstack(vertices)
+        faces = np.vstack(faces)
+        save_triangle_mesh(vertices, faces, self.log_dir + 'final_merged_mesh.ply')
 
     def close(self):
         self.plotter.close()
@@ -155,6 +197,13 @@ class Record(EasyDict):
             self.best_sub_record = record.name
             best_episode = self.episode - (elapsed_episodes - record.episodes[-1])
             elpased_time = self.clock() - self.start_time
+            if self.base_cloud is None or self.base_color is None:
+                self.get_base()
+            if self.round is None:
+                self.round = 0
+            evolution_key = f'round_{self.round}_instance_{self.token_index}'
+            if evolution_key not in self.evolutions:
+                self.evolutions[evolution_key] = []
             self.evolving_scores.append(score)
             self.evolving_episodes.append(best_episode)
             # self.evolving_actions.append(record.actions[-1])
@@ -167,7 +216,7 @@ class Record(EasyDict):
                 trait=record.traits[-1],
             )            
             # easydict 需要用string 作为key
-            self.evolutions[f'round_{self.round}_instance_{self.token_index}'].append(best)
+            self.evolutions[evolution_key].append(best)
 
             with open(self.out_json_file_name, 'w') as out_file:
                 log = copy(self)
@@ -175,9 +224,10 @@ class Record(EasyDict):
                 log.evolutions = 'see the files named evolution_round_{}_of_instance_{}.json'                
                 json.dump(log, out_file, default=json_default, indent=2)
             with open(f'{self.log_dir}evolution_of_round_{self.round}_instance_{self.token_index}.json', 'w') as out_file:
-                json.dump(self.evolutions[f'round_{self.round}_instance_{self.token_index}'], out_file, default=json_default, indent=2)
+                json.dump(self.evolutions[evolution_key], out_file, default=json_default, indent=2)
 
             token = record.best_token
+            self.best_estimator = deepcopy(record.best_estimator)
             token.color = np.full(token.points.shape[0], self.token_index)
             self.best_token_set[self.token_index] = token
 
@@ -191,5 +241,8 @@ class Record(EasyDict):
             self.plotter.plot(runner_id=self.name, rollout_id=self.best_sub_record, episodes=self.evolving_episodes, scores=self.evolving_scores,
                               times=self.evolving_times, model=self.best_cloud, data=self.data_cloud, model_labels=self.best_color, model_image=model_image)
             save_point_cloud(token.points, self.log_dir + f'best_cloud_of_instance_{self.token_index}.ply')
+            if self.cfg['fitter']['num_instances'] > 1:
+                save_point_cloud(self.best_cloud, self.log_dir + 'final_merged.ply')
+                self._save_merged_mesh()
             return True
         return False

@@ -14,11 +14,18 @@ def read_point_cloud(file_name):
         z = np.array(z)
         cloud = np.vstack((x, y, z)).transpose()
     elif 'ply' == file_type:
-        from .plyfile import PlyData
-        ply_data = PlyData.read(file_name)
-        vertex = ply_data['vertex']
-        (x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
-        cloud = np.vstack((x, y, z)).transpose()
+        try:
+            from .plyfile import PlyData
+
+            ply_data = PlyData.read(file_name)
+            vertex = ply_data['vertex']
+            (x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
+            cloud = np.vstack((x, y, z)).transpose()
+        except ModuleNotFoundError:
+            import open3d as o3d
+
+            point_cloud = o3d.io.read_point_cloud(file_name)
+            cloud = np.asarray(point_cloud.points)
     # elif 'ply' == file_type:
     #     ply_data = PlyData.read(file_name)
     #     vertex = ply_data['vertex']

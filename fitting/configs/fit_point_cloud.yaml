@@ -6,11 +6,28 @@ run_id: 1
 data_file: '/home/m25lll/code/nurbsfit/data/input/00873042_lessp/00873042_lessp.ply'
 
 model:
-  type: 'surface'           # 可选: curve, surface；surface 当前使用 rectangle_rule
+  # 可选: curve, surface, nurbs_surface
+  type: 'nurbs_surface'
+  # NURBS 控制点网格大小（u 方向）
+  num_ctrl_u: 6
+  # NURBS 控制点网格大小（v 方向）
+  num_ctrl_v: 6
+  # NURBS 次数（u 方向）
+  degree_u: 3
+  # NURBS 次数（v 方向）
+  degree_v: 3
+  # NURBS 采样分辨率（u 方向）
+  sample_u: 25
+  # NURBS 采样分辨率（v 方向）
+  sample_v: 25
+  # NURBS 权重下界
+  weight_lb: 0.3
+  # NURBS 权重上界
+  weight_ub: 3.0
 
 # ===== 硬件与随机种子 =====
 device:
-  train_device: 'cuda:0' #'cuda:0'  #cuda:0
+  train_device: 'cuda:0'  #cuda:0
   cuda_deterministic: true
 seeds: null
 
@@ -19,8 +36,8 @@ estimator:
   type: 'npre'              # 可选项: npre, mm
   horizontal_type: 'Circle' # 仅 curve 模型使用: Line, Circle, Spiral
   vertical_type: 'Parabola' # 仅 curve 模型使用: Line, Parabola
-  data_resolution: 0.2      # 输入点云的数据分辨率；可命令行覆盖: --data-resolution
-  model_resolution: 0.06    # 模型分辨率；surface/rectangle 也使用这个值控制采样层级
+  data_resolution: 0.01     # 输入点云的数据分辨率；可命令行覆盖: --data-resolution
+  model_resolution: 0.003   # 模型分辨率；surface/rectangle 也使用这个值控制采样层级
   early_rejection: true
   regularization_factor: 1.0
   open3d_version: 'legacy'
@@ -28,10 +45,10 @@ estimator:
 # ===== 核心寻优算法设置 =====
 fitter:
   algo_name: 'cco'          # 一键切换算法: cco, cs, ala
-  num_instances: 4
-  num_envs: 8
-  episodes_per_env: 20
-  max_episode: 250000
+  num_instances: 5          # 多实例拟合：顺序拟合 5 张 NURBS patch
+  num_envs: 4
+  episodes_per_env: 8
+  max_episode: 20000
   # 常用覆盖:
   # --num-instances 5 --num-envs 1 --episodes-per-env 6 --max-episode 60
 

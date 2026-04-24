@@ -13,6 +13,30 @@ def save_point_cloud(cloud, path):
         cloud = np.hstack((cloud, padding))
     pcu.save_mesh_v(path, cloud)
 
+
+def save_triangle_mesh(vertices, faces, path, vertex_colors=None):
+    import open3d as o3d
+
+    vertices = np.asarray(vertices, dtype=np.float64)
+    faces = np.asarray(faces, dtype=np.int32)
+
+    if vertices.shape[1] == 2:
+        padding = np.zeros((vertices.shape[0], 1), dtype=vertices.dtype)
+        vertices = np.hstack((vertices, padding))
+
+    mesh = o3d.geometry.TriangleMesh()
+    mesh.vertices = o3d.utility.Vector3dVector(vertices)
+    mesh.triangles = o3d.utility.Vector3iVector(faces)
+
+    if vertex_colors is not None:
+        vertex_colors = np.asarray(vertex_colors, dtype=np.float64)
+        if vertex_colors.max() > 1.0:
+            vertex_colors = vertex_colors / 255.0
+        mesh.vertex_colors = o3d.utility.Vector3dVector(vertex_colors)
+
+    mesh.compute_vertex_normals()
+    o3d.io.write_triangle_mesh(path, mesh)
+
 def compute_resolution(cloud, rank=0.05, deduplicate=True):
     assert isinstance(cloud, np.ndarray)
     assert rank >= 0 and rank <= 1 # rank is a float in [0, 1]
@@ -294,5 +318,4 @@ def get_boundary(cloud):
         boundary[0, i] = np.min(cloud[:, i])
         boundary[1, i] = np.max(cloud[:, i])
     return boundary
-
 

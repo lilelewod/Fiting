@@ -30,6 +30,10 @@ def get_rule_class(cfg):
         from models.surface.rectangle_rule import RectangleRule
 
         return RectangleRule
+    if model_type == 'nurbs_surface':
+        from models.surface.nurbs_surface_rule import NURBSSurfaceRule
+
+        return NURBSSurfaceRule
     raise ValueError(f"Unknown 3D model type: {model_type}")
 
 
@@ -86,7 +90,7 @@ def main():
     parser.add_argument('--config', type=str, default='configs/fit_point_cloud.yaml')
     parser.add_argument('--algo', type=str, default=None, choices=['cco', 'cs', 'ala'])
     parser.add_argument('--estimator', type=str, default=None, choices=['npre', 'mm'])
-    parser.add_argument('--model', type=str, default=None, choices=['curve', 'surface'])
+    parser.add_argument('--model', type=str, default=None, choices=['curve', 'surface', 'nurbs_surface'])
     parser.add_argument('--data-file', type=str, default=None)
     parser.add_argument('--num-instances', type=int, default=None)
     parser.add_argument('--num-envs', type=int, default=None)

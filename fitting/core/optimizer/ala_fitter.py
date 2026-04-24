@@ -153,10 +153,11 @@ class Fitter:
 
     def fit(self):
         for i in range(self.cfg['fitter']['num_instances']):
+            self.record.token_index = i
             print(f'Fitting for the model instance {i} begins')
             best_score = self.optimize_instance()
             print(f'\nFitting for the model instance {i} finished. Best Score: {best_score}\n\n')
-            self.collector.update(self.record.best_estimator)
+            self.collector.update(self.record)
         print('The ALA Multi-Instance fitting is finished.')
 
     def close(self):
