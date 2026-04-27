@@ -45,7 +45,7 @@ estimator:
 # ===== 核心寻优算法设置 =====
 fitter:
   algo_name: 'cco'          # 一键切换算法: cco, cs, ala
-  num_instances: 5          # 多实例拟合：顺序拟合 5 张 NURBS patch
+  num_instances: 6         # 多实例拟合：顺序拟合 5 张 NURBS patch
   num_envs: 4
   episodes_per_env: 8
   max_episode: 20000

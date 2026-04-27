@@ -56,6 +56,13 @@ def _basis_functions(u_values, num_ctrl_pts, degree, knots):
 
 
 def _try_import_nurbsdiff():
+    try:
+        from NURBSDiff.surf_eval import SurfEval
+
+        return SurfEval
+    except Exception:
+        pass
+
     candidate_roots = []
     current_root = Path(__file__).resolve().parents[3]
     candidate_roots.append(current_root / "code" / "NURBSDiff")
@@ -200,9 +207,11 @@ class NURBSSurfaceRule(ModelRule):
         if self._surf_eval is None or getattr(self._surf_eval, "_cache_key", None) != cache_key:
             import torch
 
-            configured_device = (
-                self.estimator.cfg.get("device", {}).get("train_device", "cpu")
-            )
+            device_cfg = self.estimator.cfg.get("raw_device", self.estimator.cfg.get("device", "cpu"))
+            if isinstance(device_cfg, dict):
+                configured_device = device_cfg.get("train_device", "cpu")
+            else:
+                configured_device = str(device_cfg)
             if "cuda" in configured_device and torch.cuda.is_available():
                 eval_device = configured_device
             else:
