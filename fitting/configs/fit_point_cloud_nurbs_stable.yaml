@@ -1,0 +1,55 @@
+# Stable baseline for NURBS point-cloud fitting.
+# Use this first to verify that one low-flexibility patch can fit the target shape.
+task_type: '3d'
+run_id: 7
+data_file: '/home/m25lll/code/Fiting/fitting/datasets/nurbs/00873042_lessp.ply'
+
+model:
+  type: 'nurbs_surface'
+  num_ctrl_u: 4
+  num_ctrl_v: 4
+  degree_u: 3
+  degree_v: 3
+  sample_u: 45
+  sample_v: 45
+  weight_lb: 0.8
+  weight_ub: 1.2
+
+device:
+  train_device: 'cuda:0'
+  cuda_deterministic: true
+seeds: null
+
+estimator:
+  type: 'npre'
+  horizontal_type: 'Circle'
+  vertical_type: 'Parabola'
+  data_resolution: 0.01
+  model_resolution: 0.004
+  early_rejection: true
+  regularization_factor: 1.2
+  incremental_coverage: true
+  overlap_penalty_factor: 2.0
+  open3d_version: 'legacy'
+
+fitter:
+  algo_name: 'cco'
+  num_instances: 6
+  num_envs: 8
+  episodes_per_env: 16
+  max_episode: 80000
+
+collector:
+  name: 'hybrid'
+  num_episodes_per_rollout: 4
+  num_rollouts: 2
+  parallel: true
+  context: 'spawn'
+  reinforcement_episode_size: 30
+  evaluation_episode_size: 10
+
+record:
+  pulse_size: 2000
+  visualization: null
+  use_thread_time: false
+  verbose: true

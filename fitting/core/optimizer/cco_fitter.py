@@ -286,15 +286,18 @@ class Fitter:
         """顺序拟合主循环：拟合一个实例后，将其在点云中剔除，继续拟合下一个"""
         for i in range(self.cfg['fitter']['num_instances']):
             self.record.token_index = i
+            self.record.best_score = 0.
+            self.record.best_sub_record = -1
+            self.record.base_cloud = None
+            self.record.base_color = None
+            if i > 0:
+                self.collector.update(self.record)
             print(f'Fitting for the model instance {i} begins')
 
             # 使用 CCO 对当前数据寻找最佳模型实例，并返回最佳得分
             best_score = self.optimize_instance()
 
             print(f'\nFitting for the model instance {i} finished. Best Score: {best_score}\n\n')
-
-            # 更新底层采集器：剔除已找到的模型对应的数据点（解决重叠问题的关键机制）
-            self.collector.update(self.record)
 
         print('The CCO Multi-Instance fitting is finished.')
 

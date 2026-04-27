@@ -191,6 +191,8 @@ class BaseEstimator:
         self.base_sum_errors = 0.0
         self.base_supporters = np.empty(0, dtype=np.int64)
         self.base_num_points = 0
+        self.new_supporters = np.empty(0, dtype=np.int64)
+        self.overlap_ratio = 0.0
 
         self.measure = 0.0
         self.single_model_error = None
@@ -317,11 +319,22 @@ class BaseEstimator:
 
         factor = self.regularization_factor
         normalized_error = error / self.data_resolution
-        normalized_regularizer = float(self.supporters.size) / float(
-            self.num_data_points
-        )
+        if (
+            self.cfg["estimator"].get("incremental_coverage", False)
+            and self.base_supporters.size > 0
+        ):
+            coverage_count = self.new_supporters.size
+        else:
+            coverage_count = self.supporters.size
+        normalized_regularizer = float(coverage_count) / float(self.num_data_points)
         self.score_npre = (normalized_regularizer**factor) / normalized_error
         self.score_mm = (self.measure**factor) / normalized_error
+
+        overlap_penalty = float(self.cfg["estimator"].get("overlap_penalty_factor", 0.0))
+        if overlap_penalty > 0.0 and self.overlap_ratio > 0.0:
+            penalty = max(0.0, 1.0 - self.overlap_ratio) ** overlap_penalty
+            self.score_npre *= penalty
+            self.score_mm *= penalty
 
         if self.estimator_type == "npre":
             self.score = self.score_npre
@@ -339,6 +352,17 @@ class BaseEstimator:
         errors, indexes = self.data_kDTree.query(points)
         sum_errors = float(np.sum(errors))
         new_supporters = indexes[:, 0]
+        if self.base_supporters.size > 0:
+            base_supporter_set = np.unique(self.base_supporters)
+            self.new_supporters = np.setdiff1d(
+                np.unique(new_supporters), base_supporter_set, assume_unique=False
+            )
+            self.overlap_ratio = float(
+                np.isin(new_supporters, base_supporter_set).sum()
+            ) / float(new_supporters.size)
+        else:
+            self.new_supporters = np.unique(new_supporters)
+            self.overlap_ratio = 0.0
         self.supporters = np.unique(np.concatenate((self.supporters, new_supporters)))
         self.nearest_points = deepcopy(self.supporters)
         return sum_errors, new_supporters
