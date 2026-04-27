@@ -200,6 +200,14 @@ class NURBSSurfaceRule(ModelRule):
         if self._surf_eval is None or getattr(self._surf_eval, "_cache_key", None) != cache_key:
             import torch
 
+            configured_device = (
+                self.estimator.cfg.get("device", {}).get("train_device", "cpu")
+            )
+            if "cuda" in configured_device and torch.cuda.is_available():
+                eval_device = configured_device
+            else:
+                eval_device = "cpu"
+
             self._surf_eval = self._surf_eval_cls(
                 m=self.num_ctrl_u - 1,
                 n=self.num_ctrl_v - 1,
@@ -210,7 +218,7 @@ class NURBSSurfaceRule(ModelRule):
                 knot_v=self.knot_v,
                 out_dim_u=sample_u,
                 out_dim_v=sample_v,
-                device="cpu",
+                device=eval_device,
             )
             self._surf_eval._cache_key = cache_key
         return self._surf_eval
@@ -222,11 +230,12 @@ class NURBSSurfaceRule(ModelRule):
 
         import torch
 
+        eval_device = getattr(surf_eval, "device", "cpu")
         ctrl_pts = np.concatenate(
             [self.trait.control_points * self.trait.weights[..., None], self.trait.weights[..., None]],
             axis=-1,
         )
-        ctrl_pts = torch.as_tensor(ctrl_pts[None, ...], dtype=torch.float32)
+        ctrl_pts = torch.as_tensor(ctrl_pts[None, ...], dtype=torch.float32, device=eval_device)
         surface = surf_eval(ctrl_pts).detach().cpu().numpy()[0]
         return surface
 

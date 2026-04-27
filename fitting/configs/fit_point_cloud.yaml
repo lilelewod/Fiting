@@ -3,7 +3,7 @@ task_type: '3d'             # 通用 3D 点云拟合入口
 run_id: 1
 # 替换为你要测试的 PLY 点云文件路径
 # 也可以通过命令行覆盖: --data-file /abs/path/to/input.ply
-data_file: 'datasets/surface/cloud1.ply'
+data_file: '/home/m25lll/code/nurbsfit/data/input/00873042_lessp/00873042_lessp.ply'
 
 model:
   # 可选: curve, surface, nurbs_surface
