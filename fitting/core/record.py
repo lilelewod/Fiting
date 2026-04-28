@@ -10,6 +10,7 @@ from tools.tool import json_default
 from tools.geometry import save_point_cloud, save_triangle_mesh
 import numpy as np
 from sklearn.neighbors import KDTree
+from scipy.spatial import Delaunay, QhullError
 
 
 class SubRecord:
@@ -142,6 +143,7 @@ class Record(EasyDict):
         faces = np.vstack(faces)
         save_triangle_mesh(vertices, faces, self.log_dir + 'final_merged_mesh.ply')
         self._save_trimmed_merged_mesh(vertices, faces)
+        self._save_uv_trimmed_merged_mesh(sample_u, sample_v)
 
     def _save_trimmed_merged_mesh(self, vertices, faces):
         record_cfg = self.cfg.get('record', {})
@@ -184,6 +186,119 @@ class Record(EasyDict):
             trimmed_vertices,
             trimmed_faces,
             self.log_dir + 'final_merged_mesh_trimmed.ply',
+        )
+
+    @staticmethod
+    def _uv_grid(rows, cols):
+        u = np.linspace(0.0, 1.0, rows, dtype=np.float32)
+        v = np.linspace(0.0, 1.0, cols, dtype=np.float32)
+        uu, vv = np.meshgrid(u, v, indexing='ij')
+        return np.stack((uu, vv), axis=-1).reshape(-1, 2)
+
+    @staticmethod
+    def _compact_mesh(vertices, faces):
+        if faces.size == 0:
+            return None, None
+        used_vertices = np.unique(faces.reshape(-1))
+        remap = np.full(vertices.shape[0], -1, dtype=np.int32)
+        remap[used_vertices] = np.arange(used_vertices.size, dtype=np.int32)
+        return vertices[used_vertices], remap[faces]
+
+    def _uv_trim_faces(self, points, sample_u, sample_v, tree, data, data_resolution):
+        record_cfg = self.cfg.get('record', {})
+        distance_factor = float(record_cfg.get('uv_trim_distance_factor', 2.5))
+        max_distance = distance_factor * data_resolution
+        distances = tree.query(points, k=1, return_distance=True)[0].reshape(-1)
+        inlier_mask = distances <= max_distance
+
+        bbox_margin_factor = float(record_cfg.get('uv_trim_bbox_margin_factor', 1.0))
+        if bbox_margin_factor > 0.0:
+            margin = bbox_margin_factor * data_resolution
+            min_point = np.min(data, axis=0) - margin
+            max_point = np.max(data, axis=0) + margin
+            inlier_mask &= np.all((points >= min_point) & (points <= max_point), axis=1)
+
+        local_faces = self._grid_faces(sample_u, sample_v)
+        uv = self._uv_grid(sample_u, sample_v)
+        inlier_uv = uv[inlier_mask]
+        if inlier_uv.shape[0] < 3:
+            return local_faces[np.all(inlier_mask[local_faces], axis=1)]
+
+        try:
+            delaunay = Delaunay(inlier_uv)
+        except QhullError:
+            return local_faces[np.all(inlier_mask[local_faces], axis=1)]
+
+        if inlier_uv.shape[0] >= 4:
+            uv_tree = KDTree(inlier_uv)
+            nearest = uv_tree.query(inlier_uv, k=2, return_distance=True)[0][:, 1]
+            edge_limit = float(record_cfg.get('uv_trim_edge_factor', 4.0)) * max(
+                float(np.median(nearest)), np.finfo(np.float32).eps
+            )
+            tri_uv = inlier_uv[delaunay.simplices]
+            edge_lengths = np.stack(
+                (
+                    np.linalg.norm(tri_uv[:, 0] - tri_uv[:, 1], axis=1),
+                    np.linalg.norm(tri_uv[:, 1] - tri_uv[:, 2], axis=1),
+                    np.linalg.norm(tri_uv[:, 2] - tri_uv[:, 0], axis=1),
+                ),
+                axis=1,
+            )
+            kept_simplices = np.max(edge_lengths, axis=1) <= edge_limit
+            if not np.any(kept_simplices):
+                kept_simplices = np.ones(delaunay.simplices.shape[0], dtype=bool)
+        else:
+            kept_simplices = np.ones(delaunay.simplices.shape[0], dtype=bool)
+
+        face_centers = np.mean(uv[local_faces], axis=1)
+        simplex_ids = delaunay.find_simplex(face_centers)
+        keep_faces = simplex_ids >= 0
+        keep_faces[keep_faces] &= kept_simplices[simplex_ids[keep_faces]]
+        return local_faces[keep_faces]
+
+    def _save_uv_trimmed_merged_mesh(self, sample_u, sample_v):
+        record_cfg = self.cfg.get('record', {})
+        estimator_cfg = self.cfg.get('estimator', {})
+        if not record_cfg.get('uv_trim_final_mesh', False):
+            return
+        if self.data_cloud is None:
+            return
+
+        data_resolution = float(estimator_cfg.get('data_resolution', 0.0))
+        if data_resolution <= 0.0:
+            return
+
+        data = np.asarray(self.data_cloud)
+        tree = KDTree(data)
+        vertices = []
+        faces = []
+        offset = 0
+        expected_points = sample_u * sample_v
+        for token in self.best_token_set:
+            if token is None or getattr(token, 'points', None) is None:
+                continue
+            points = np.asarray(token.points)
+            if points.shape[0] != expected_points:
+                return
+            local_faces = self._uv_trim_faces(points, sample_u, sample_v, tree, data, data_resolution)
+            if local_faces.size == 0:
+                continue
+            vertices.append(points)
+            faces.append(local_faces + offset)
+            offset += points.shape[0]
+
+        if not vertices or not faces:
+            return
+
+        vertices = np.vstack(vertices)
+        faces = np.vstack(faces)
+        vertices, faces = self._compact_mesh(vertices, faces)
+        if vertices is None:
+            return
+        save_triangle_mesh(
+            vertices,
+            faces,
+            self.log_dir + 'final_merged_mesh_uv_trimmed.ply',
         )
 
     def close(self):

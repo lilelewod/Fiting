@@ -1,7 +1,7 @@
 # Stable baseline for NURBS point-cloud fitting.
 # Use this first to verify that one low-flexibility patch can fit the target shape.
 task_type: '3d'
-run_id: 9
+run_id: 10
 data_file: '/home/m25lll/code/Fiting/fitting/datasets/nurbs/00873042_lessp.ply'
 
 model:
@@ -39,10 +39,10 @@ estimator:
 
 fitter:
   algo_name: 'cco'
-  num_instances: 6
+  num_instances: 8
   num_envs: 8
   episodes_per_env: 16
-  max_episode: 80000
+  max_episode: 120000
 
 collector:
   name: 'hybrid'
@@ -61,3 +61,7 @@ record:
   trim_final_mesh: true
   trim_distance_factor: 2.5
   trim_bbox_margin_factor: 1.0
+  uv_trim_final_mesh: true
+  uv_trim_distance_factor: 2.5
+  uv_trim_bbox_margin_factor: 1.0
+  uv_trim_edge_factor: 4.0
