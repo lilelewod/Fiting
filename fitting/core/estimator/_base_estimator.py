@@ -193,6 +193,9 @@ class BaseEstimator:
         self.base_num_points = 0
         self.new_supporters = np.empty(0, dtype=np.int64)
         self.overlap_ratio = 0.0
+        self.outlier_ratio = 0.0
+        self.bbox_violation_ratio = 0.0
+        self.control_smoothness = 0.0
 
         self.measure = 0.0
         self.single_model_error = None
@@ -212,6 +215,7 @@ class BaseEstimator:
         self.labels = np.empty(0, dtype=np.int64)
         self.token = None
         self.model_color = None
+        self.control_smoothness = 0.0
 
     def update(self, supporters, sum_errors, num_points):
         self.base_sum_errors = deepcopy(sum_errors)
@@ -336,6 +340,26 @@ class BaseEstimator:
             self.score_npre *= penalty
             self.score_mm *= penalty
 
+        outlier_penalty = float(self.cfg["estimator"].get("outlier_penalty_factor", 0.0))
+        if outlier_penalty > 0.0 and self.outlier_ratio > 0.0:
+            penalty = max(0.0, 1.0 - self.outlier_ratio) ** outlier_penalty
+            self.score_npre *= penalty
+            self.score_mm *= penalty
+
+        bbox_penalty = float(self.cfg["estimator"].get("bbox_penalty_factor", 0.0))
+        if bbox_penalty > 0.0 and self.bbox_violation_ratio > 0.0:
+            penalty = max(0.0, 1.0 - self.bbox_violation_ratio) ** bbox_penalty
+            self.score_npre *= penalty
+            self.score_mm *= penalty
+
+        smoothness_penalty = float(
+            self.cfg["estimator"].get("control_smoothness_penalty_factor", 0.0)
+        )
+        if smoothness_penalty > 0.0 and self.control_smoothness > 0.0:
+            penalty = 1.0 / (1.0 + smoothness_penalty * self.control_smoothness)
+            self.score_npre *= penalty
+            self.score_mm *= penalty
+
         if self.estimator_type == "npre":
             self.score = self.score_npre
         elif self.estimator_type in {"mm", "mean measure"}:
@@ -352,6 +376,24 @@ class BaseEstimator:
         errors, indexes = self.data_kDTree.query(points)
         sum_errors = float(np.sum(errors))
         new_supporters = indexes[:, 0]
+        outlier_distance_factor = float(
+            self.cfg["estimator"].get("outlier_distance_factor", 0.0)
+        )
+        if outlier_distance_factor > 0.0:
+            max_distance = outlier_distance_factor * float(self.data_resolution)
+            self.outlier_ratio = float(np.mean(errors > max_distance))
+        else:
+            self.outlier_ratio = 0.0
+
+        bbox_margin_factor = float(self.cfg["estimator"].get("bbox_margin_factor", 0.0))
+        if bbox_margin_factor > 0.0:
+            margin = bbox_margin_factor * float(self.data_resolution)
+            below = points < (self.min_point - margin)
+            above = points > (self.max_point + margin)
+            self.bbox_violation_ratio = float(np.mean(np.any(below | above, axis=1)))
+        else:
+            self.bbox_violation_ratio = 0.0
+
         if self.base_supporters.size > 0:
             base_supporter_set = np.unique(self.base_supporters)
             self.new_supporters = np.setdiff1d(
@@ -400,6 +442,7 @@ class BaseEstimator:
 
         token.supporters = supporters
         token.sum_errors = sum_errors
+        self.control_smoothness = self.compute_control_smoothness(token)
 
         self.sum_errors += sum_errors
         self.num_points += points.shape[0]
@@ -426,3 +469,22 @@ class BaseEstimator:
                 self.model_color = deepcopy(new_color)
             else:
                 self.model_color = np.vstack((self.model_color, new_color))
+
+    def compute_control_smoothness(self, token):
+        trait = getattr(token, "trait", None)
+        control_points = getattr(trait, "control_points", None)
+        if control_points is None:
+            return 0.0
+
+        control_points = np.asarray(control_points, dtype=np.float32)
+        if control_points.ndim != 3 or control_points.shape[0] < 3 or control_points.shape[1] < 3:
+            return 0.0
+
+        second_u = control_points[2:, :, :] - 2.0 * control_points[1:-1, :, :] + control_points[:-2, :, :]
+        second_v = control_points[:, 2:, :] - 2.0 * control_points[:, 1:-1, :] + control_points[:, :-2, :]
+        roughness = np.mean(np.linalg.norm(second_u, axis=-1))
+        roughness += np.mean(np.linalg.norm(second_v, axis=-1))
+
+        extent = np.linalg.norm(self.max_point - self.min_point)
+        scale = max(float(extent), float(self.data_resolution), np.finfo(np.float32).eps)
+        return float(roughness / scale)

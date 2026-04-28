@@ -9,6 +9,7 @@ from easydict import EasyDict
 from tools.tool import json_default
 from tools.geometry import save_point_cloud, save_triangle_mesh
 import numpy as np
+from sklearn.neighbors import KDTree
 
 
 class SubRecord:
@@ -140,6 +141,50 @@ class Record(EasyDict):
         vertices = np.vstack(vertices)
         faces = np.vstack(faces)
         save_triangle_mesh(vertices, faces, self.log_dir + 'final_merged_mesh.ply')
+        self._save_trimmed_merged_mesh(vertices, faces)
+
+    def _save_trimmed_merged_mesh(self, vertices, faces):
+        record_cfg = self.cfg.get('record', {})
+        estimator_cfg = self.cfg.get('estimator', {})
+        if not record_cfg.get('trim_final_mesh', False):
+            return
+        if self.data_cloud is None or len(vertices) == 0 or len(faces) == 0:
+            return
+
+        data = np.asarray(self.data_cloud)
+        data_resolution = float(estimator_cfg.get('data_resolution', 0.0))
+        if data_resolution <= 0.0:
+            return
+
+        distance_factor = float(record_cfg.get('trim_distance_factor', 2.5))
+        max_distance = distance_factor * data_resolution
+        distances = KDTree(data).query(vertices, k=1, return_distance=True)[0].reshape(-1)
+        keep_vertices = distances <= max_distance
+
+        bbox_margin_factor = float(record_cfg.get('trim_bbox_margin_factor', 1.0))
+        if bbox_margin_factor > 0.0:
+            margin = bbox_margin_factor * data_resolution
+            min_point = np.min(data, axis=0) - margin
+            max_point = np.max(data, axis=0) + margin
+            inside_bbox = np.all((vertices >= min_point) & (vertices <= max_point), axis=1)
+            keep_vertices &= inside_bbox
+
+        keep_faces = np.all(keep_vertices[faces], axis=1)
+        trimmed_faces = faces[keep_faces]
+        if trimmed_faces.size == 0:
+            return
+
+        used_vertices = np.unique(trimmed_faces.reshape(-1))
+        remap = np.full(vertices.shape[0], -1, dtype=np.int32)
+        remap[used_vertices] = np.arange(used_vertices.size, dtype=np.int32)
+        trimmed_vertices = vertices[used_vertices]
+        trimmed_faces = remap[trimmed_faces]
+
+        save_triangle_mesh(
+            trimmed_vertices,
+            trimmed_faces,
+            self.log_dir + 'final_merged_mesh_trimmed.ply',
+        )
 
     def close(self):
         self.plotter.close()
