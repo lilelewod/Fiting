@@ -14,10 +14,18 @@ from sklearn.neighbors import KDTree
 
 
 DEFAULT_DATA = "/home/m25lll/code/nurbsfit/data/input/00873042_lessp/00873042_lessp.ply"
-NURBSFIT_CURRENT = "/home/m25lll/code/nurbsfit/data/output/uv_trimmed_surface_color/mask_80.0_theta_1.0"
-NURBSFIT_BEFORE = "/home/m25lll/code/nurbsfit/data/output/00873042_lessp_before_paper_params/uv_trimmed_surface_color/mask_80.0_theta_1.0"
 FITING_RUN_10 = "/home/m25lll/code/Fiting/fitting/outputs/cco/3d/nurbs_surface/nurbs/00873042_lessp/run_10/2026-0428/1513-28"
 
+# Edit these paths directly if you prefer running the script without CLI args.
+CONFIG_DATA = DEFAULT_DATA
+CONFIG_CASE_NAME = "result"
+CONFIG_CASE_PATHS = [
+    f"{FITING_RUN_10}/final_merged_mesh_uv_trimmed.ply",
+]
+CONFIG_THRESHOLD = 0.025
+CONFIG_INCLUDE_COMBINED = False
+CONFIG_CSV = None
+CONFIG_PDF = Path("/home/m25lll/code/Fiting/fitting/tools/compare_fit_coverage_report.pdf")
 
 def _load_vertices(path: Path) -> np.ndarray:
     mesh = o3d.io.read_triangle_mesh(str(path))
@@ -217,31 +225,50 @@ def write_pdf(path: Path, rows: list[dict[str, float | str]]) -> None:
         plt.close(fig)
 
 
+def run_cases(
+    data_path: str,
+    threshold: float,
+    case_specs: list[str],
+    include_combined: bool,
+    csv_path: Path | None,
+    pdf_path: Path | None,
+) -> None:
+    data_points = _load_vertices(Path(data_path))
+    rows: list[dict[str, float | str]] = []
+    for case in case_specs:
+        name, inputs = parse_case(case)
+        model_points, files = collect_vertices(inputs, include_combined=include_combined)
+        metrics = compute_metrics(data_points, model_points, threshold)
+        print_metrics(name, files, metrics)
+        rows.append(
+            {
+                "name": name,
+                "files": len(files),
+                **metrics,
+            }
+        )
+
+    if csv_path is not None:
+        write_csv(csv_path, rows)
+        print(f"\nCSV saved to: {csv_path}")
+
+    if pdf_path is not None:
+        write_pdf(pdf_path, rows)
+        print(f"PDF saved to: {pdf_path}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Compare fitted model coverage against an original point cloud.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=f"""
-Common paths:
-  original point cloud:
-    {DEFAULT_DATA}
+Edit the config at the top of this file and run:
+  python tools/compare_fit_coverage.py
 
-  current NURBSFit uv-trimmed result:
-    {NURBSFIT_CURRENT}
-
-  NURBSFit before_paper_params uv-trimmed result:
-    {NURBSFIT_BEFORE}
-
-  Fiting run_10 result directory:
-    {FITING_RUN_10}
-
-Examples:
-  python tools/compare_fit_coverage.py --quick
-
+Optional CLI example:
   python tools/compare_fit_coverage.py \\
     --data {DEFAULT_DATA} \\
-    --case nurbsfit={NURBSFIT_CURRENT} \\
-    --case fiting_run10={FITING_RUN_10}/final_merged_mesh_uv_trimmed.ply
+    --case result={FITING_RUN_10}/final_merged_mesh_uv_trimmed.ply
 """,
     )
     parser.add_argument("--data", default=DEFAULT_DATA, help="Original point cloud path.")
@@ -259,49 +286,31 @@ Examples:
         action="store_true",
         help="Include files whose names contain 'combined'. By default they are skipped to avoid double counting.",
     )
-    parser.add_argument(
-        "--quick",
-        action="store_true",
-        help="Compare the saved NURBSFit current, NURBSFit before_paper_params, and Fiting run_10 outputs.",
-    )
     args = parser.parse_args()
 
+    if len(__import__("sys").argv) == 1:
+        case_paths = ",".join(CONFIG_CASE_PATHS)
+        run_cases(
+            data_path=CONFIG_DATA,
+            threshold=CONFIG_THRESHOLD,
+            case_specs=[f"{CONFIG_CASE_NAME}={case_paths}"],
+            include_combined=CONFIG_INCLUDE_COMBINED,
+            csv_path=Path(CONFIG_CSV) if CONFIG_CSV else None,
+            pdf_path=Path(CONFIG_PDF) if CONFIG_PDF else None,
+        )
+        return
+
     cases = list(args.case)
-    if args.quick:
-        cases.extend(
-            [
-                f"nurbsfit_current={NURBSFIT_CURRENT}",
-                f"nurbsfit_before_paper={NURBSFIT_BEFORE}",
-                f"fiting_run10_uv={FITING_RUN_10}/final_merged_mesh_uv_trimmed.ply",
-                f"fiting_run10_trimmed={FITING_RUN_10}/final_merged_mesh_trimmed.ply",
-            ]
-        )
-
     if not cases:
-        parser.error("provide at least one --case, or use --quick")
-
-    data_points = _load_vertices(Path(args.data))
-    rows: list[dict[str, float | str]] = []
-    for case in cases:
-        name, inputs = parse_case(case)
-        model_points, files = collect_vertices(inputs, include_combined=args.include_combined)
-        metrics = compute_metrics(data_points, model_points, args.threshold)
-        print_metrics(name, files, metrics)
-        rows.append(
-            {
-                "name": name,
-                "files": len(files),
-                **metrics,
-            }
-        )
-
-    if args.csv is not None:
-        write_csv(args.csv, rows)
-        print(f"\nCSV saved to: {args.csv}")
-
-    if args.pdf is not None:
-        write_pdf(args.pdf, rows)
-        print(f"PDF saved to: {args.pdf}")
+        parser.error("provide at least one --case, or edit the config at the top of this file and run without args")
+    run_cases(
+        data_path=args.data,
+        threshold=args.threshold,
+        case_specs=cases,
+        include_combined=args.include_combined,
+        csv_path=args.csv,
+        pdf_path=args.pdf,
+    )
 
 
 if __name__ == "__main__":
