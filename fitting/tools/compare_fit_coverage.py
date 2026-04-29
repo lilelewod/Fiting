@@ -14,16 +14,15 @@ from sklearn.neighbors import KDTree
 
 
 DEFAULT_DATA = "/home/m25lll/code/nurbsfit/data/input/00873042_lessp/00873042_lessp.ply"
-FITING_RUN_10 = "/home/m25lll/code/Fiting/fitting/outputs/cco/3d/nurbs_surface/nurbs/00873042_lessp/run_10/2026-0428/1513-28"
+FITING_RUN_10 = "/home/m25lll/code/nurbsfit/data/output/00873042_lessp/20260428_195131/uv_trimmed_surface_color/mask_80.0_theta_1.0/00873042_lessp_20260428_195131_uv_trim_combined.ply"
 
 # Edit these paths directly if you prefer running the script without CLI args.
 CONFIG_DATA = DEFAULT_DATA
 CONFIG_CASE_NAME = "result"
-CONFIG_CASE_PATHS = [
-    f"{FITING_RUN_10}/final_merged_mesh_uv_trimmed.ply",
-]
+CONFIG_CASE_PATHS = [FITING_RUN_10]
+
 CONFIG_THRESHOLD = 0.025
-CONFIG_INCLUDE_COMBINED = False
+CONFIG_INCLUDE_COMBINED = True
 CONFIG_CSV = None
 CONFIG_PDF = Path("/home/m25lll/code/Fiting/fitting/tools/compare_fit_coverage_report.pdf")
 
@@ -289,7 +288,10 @@ Optional CLI example:
     args = parser.parse_args()
 
     if len(__import__("sys").argv) == 1:
-        case_paths = ",".join(CONFIG_CASE_PATHS)
+        if isinstance(CONFIG_CASE_PATHS, (str, Path)):
+            case_paths = str(CONFIG_CASE_PATHS)
+        else:
+            case_paths = ",".join(str(path) for path in CONFIG_CASE_PATHS)
         run_cases(
             data_path=CONFIG_DATA,
             threshold=CONFIG_THRESHOLD,
