@@ -71,6 +71,7 @@ class Fitter:
         self.weight_reg_weight = float(fitter_cfg.get("gd_weight_reg_weight", 0.01))
         self.overlap_weight = float(fitter_cfg.get("gd_overlap_weight", 0.05))  # num_instances>1 时生效
         self.overlap_margin_factor = float(fitter_cfg.get("gd_overlap_margin_factor", 2.0))  # × data_resolution
+        self.exclude_covered = bool(fitter_cfg.get("gd_exclude_covered", True))
 
         # NURBS 结构参数
         self.num_ctrl_u = int(model_cfg["num_ctrl_u"])
@@ -143,11 +144,11 @@ class Fitter:
         return np.clip(grid, lb, ub)
 
     def _target_points_for_instance(self):
-        """多实例拟合时，排除已被之前实例覆盖的数据点"""
+        """多实例拟合时，根据 gd_exclude_covered 决定是否排除已覆盖数据点"""
         data = self.estimator.get_data()
         base_supporters = np.asarray(self.estimator.base_supporters, dtype=np.int64)
-        if base_supporters.size == 0:
-            return data
+        if base_supporters.size == 0 or not self.exclude_covered:
+            return data  # 不排除，靠 overlap 惩罚分离实例
 
         mask = np.ones(data.shape[0], dtype=bool)
         mask[np.unique(base_supporters)] = False

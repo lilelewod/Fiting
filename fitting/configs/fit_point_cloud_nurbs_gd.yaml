@@ -1,6 +1,6 @@
 # GD vs CCO 对比实验 — 多实例版
 task_type: '3d'
-run_id: 24
+run_id: 25                                   # 不排除已覆盖点，靠 overlap 分离
 data_file: '/home/m25lll/code/Fiting/fitting/datasets/nurbs/00873042_lessp.ply'
 
 model:
@@ -47,8 +47,8 @@ estimator:
 
 fitter:
   algo_name: 'gd'
-  num_instances: 8                            # 多实例，与 CCO 对齐
-  max_episode: 20000                          # 每个实例 20K 步（单实例已验证 20K 足够收敛）
+  num_instances: 8
+  max_episode: 20000
 
   # ---- 训练控制 ----
   gd_lr: 0.01
@@ -65,8 +65,9 @@ fitter:
   gd_smoothness_weight: 0.1
   gd_bbox_weight: 0.2
   gd_weight_reg_weight: 0.01
-  gd_overlap_weight: 0.5                     # 从 0.05 大幅提高，防止面片重复拟合同一区域
-  gd_overlap_margin_factor: 4.0              # 重叠判定距离 4×0.01=0.04（之前硬编码2×0.01=0.02）
+  gd_overlap_weight: 0.2                     # 适中惩罚，靠 overlap 而非数据排除来分离实例
+  gd_overlap_margin_factor: 2.0              # 重叠阈值 2.0×0.01=0.02
+  gd_exclude_covered: false                  # 不排除已覆盖点，让每个实例都能看到完整数据
 
 collector:
   name: 'hybrid'
