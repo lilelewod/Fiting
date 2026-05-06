@@ -92,7 +92,7 @@ def prepare_3d_cfg(base_cfg):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='configs/fit_point_cloud_nurbs_stable.yaml')
+    parser.add_argument('--config', type=str, default='configs/fit_point_cloud_nurbs_gd.yaml')
     parser.add_argument('--algo', type=str, default=None, choices=['cco', 'gd', 'cs', 'ala'])
     parser.add_argument('--estimator', type=str, default=None, choices=['npre', 'gd', 'mm'])
     parser.add_argument('--model', type=str, default=None, choices=['curve', 'surface', 'nurbs_surface'])

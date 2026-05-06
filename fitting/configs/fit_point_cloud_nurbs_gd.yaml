@@ -17,8 +17,7 @@ model:
 device:
   train_device: 'cuda:0'
   cuda_deterministic: true
-seeds:
-  - 65036
+seeds: null
 
 estimator:
   type: 'gd'
