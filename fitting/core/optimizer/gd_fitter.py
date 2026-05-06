@@ -56,6 +56,7 @@ class Fitter:
         # 训练控制
         self.max_steps = int(fitter_cfg.get("max_episode", 20000))
         self.lr = float(fitter_cfg.get("gd_lr", 1e-2))
+        self.lr_min_factor = float(fitter_cfg.get("gd_lr_min_factor", 0.3))
         self.eval_interval = int(fitter_cfg.get("gd_eval_interval", 100))
         self.data_batch_size = int(fitter_cfg.get("gd_data_batch_size", 4096))  # 0=全量
 
@@ -185,10 +186,8 @@ class Fitter:
             torch.logit(((init_weights - self.weight_lb) / (self.weight_ub - self.weight_lb)).clamp(1e-4, 1 - 1e-4)))
 
         optimizer = torch.optim.Adam([control_points, weights_raw], lr=self.lr)
-        # 最终学习率 = lr * gd_lr_min_factor，默认 0.3 比之前的 0.05 温和得多
-        lr_min_factor = float(fitter_cfg.get("gd_lr_min_factor", 0.3))
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=max(self.max_steps, 1), eta_min=self.lr * lr_min_factor)
+            optimizer, T_max=max(self.max_steps, 1), eta_min=self.lr * self.lr_min_factor)
         sub_record = SubRecord(self.cfg, env_id=0)
         sub_record.data_cloud = self.record.data_cloud
         best_score = float("-inf")

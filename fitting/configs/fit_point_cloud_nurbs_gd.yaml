@@ -1,6 +1,6 @@
-# GD vs CCO 对比实验
+# GD vs CCO 对比实验 — 多实例版
 task_type: '3d'
-run_id: 21                                   # 改进版：降低 smoothness + 温和 LR 退火
+run_id: 24
 data_file: '/home/m25lll/code/Fiting/fitting/datasets/nurbs/00873042_lessp.ply'
 
 model:
@@ -34,9 +34,9 @@ estimator:
   vertical_type: 'Parabola'
   data_resolution: 0.01
   model_resolution: 0.004
-  early_rejection: false                     # GD 不需要 early rejection
+  early_rejection: false
   regularization_factor: 1.2
-  incremental_coverage: true
+  incremental_coverage: true                  # 多实例：只对新覆盖点计数
   overlap_penalty_factor: 2.0
   outlier_distance_factor: 2.5
   outlier_penalty_factor: 3.0
@@ -47,26 +47,25 @@ estimator:
 
 fitter:
   algo_name: 'gd'
-  num_instances: 1                          # 先单实例，后续可加到 8 跟 CCO 对齐
-  max_episode: 20000                        # 20K 步
+  num_instances: 8                            # 多实例，与 CCO 对齐
+  max_episode: 20000                          # 每个实例 20K 步（单实例已验证 20K 足够收敛）
 
   # ---- 训练控制 ----
-  gd_lr: 0.01                               # Adam 初始学习率
-  gd_lr_min_factor: 0.3                     # CosineAnnealing 最终 lr = 0.01×0.3 = 0.003（之前硬编码 0.05 = 0.0005 太低）
-  gd_eval_interval: 200                     # 每 200 步 NPRE 评估
-  gd_data_batch_size: 0                     # 0 = 全量数据
+  gd_lr: 0.01
+  gd_lr_min_factor: 0.05
+  gd_eval_interval: 200
+  gd_data_batch_size: 0
 
   # ---- loss 权重 ----
-  # run_20: score 0.0352，前几千步收敛快，后 LR 降到 0.0005 后几乎停滞
   gd_data_to_model_weight: 1.0
   gd_model_to_data_weight: 1.0
-  gd_coverage_weight: 0.3                   # 覆盖率奖励，核心里程碑
-  gd_coverage_threshold_factor: 2.5         # 覆盖阈值 2.5 × resolution = 0.025
-  gd_coverage_temperature_factor: 0.5       # sigmoid 温度 0.5 × resolution = 0.005
-  gd_smoothness_weight: 0.05                # run_20=0.1 偏高，曲面形变受限
+  gd_coverage_weight: 0.3
+  gd_coverage_threshold_factor: 2.5
+  gd_coverage_temperature_factor: 0.5
+  gd_smoothness_weight: 0.1
   gd_bbox_weight: 0.2
   gd_weight_reg_weight: 0.01
-  gd_overlap_weight: 0.0                    # 单实例无需重叠惩罚
+  gd_overlap_weight: 0.05                     # 多实例必须打开，避免 8 个面片重叠
 
 collector:
   name: 'hybrid'
