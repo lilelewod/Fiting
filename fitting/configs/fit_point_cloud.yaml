@@ -1,6 +1,6 @@
 # ===== 实验基础信息 =====
 task_type: '3d'             # 通用 3D 点云拟合入口
-run_id: 1
+run_id: 12
 # 替换为你要测试的 PLY 点云文件路径
 # 也可以通过命令行覆盖: --data-file /abs/path/to/input.ply
 data_file: '/home/m25lll/code/Fiting/fitting/datasets/nurbs/00873042_lessp.ply'
@@ -27,7 +27,7 @@ model:
 
 # ===== 硬件与随机种子 =====
 device:
-  train_device: 'cuda:0'  #cuda:0
+  train_device: 'cuda:1'  #cuda:0
   cuda_deterministic: true
 seeds: null
 
@@ -45,10 +45,10 @@ estimator:
 # ===== 核心寻优算法设置 =====
 fitter:
   algo_name: 'cco'          # 一键切换算法: cco, cs, ala
-  num_instances: 6         # 多实例拟合：顺序拟合 5 张 NURBS patch
+  num_instances: 10         # 多实例拟合：顺序拟合 5 张 NURBS patch
   num_envs: 4
   episodes_per_env: 8
-  max_episode: 20000
+  max_episode: 120000
   # 常用覆盖:
   # --num-instances 5 --num-envs 1 --episodes-per-env 6 --max-episode 60
 
@@ -65,7 +65,7 @@ collector:
 # ===== 日志与可视化 =====
 record:
   pulse_size: 2000
-  visualization: parallel  # 可选项: parallel, sequential, none
+  visualization: null  # 可选项: parallel, sequential, none
   use_thread_time: false
   verbose: true
   # 关闭可视化可用: --visualization none

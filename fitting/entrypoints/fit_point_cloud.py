@@ -15,6 +15,7 @@ set_project_root_as_working_directory(__file__)
 
 from core.estimator.npre_estimator import NPREEstimator
 from core.estimator.mm_estimator import MeanMeasureEstimator
+from core.estimator.gd_estimator import GDEstimator
 from tools.data_tool import load_ply_data as load_data
 
 
@@ -41,6 +42,8 @@ def run_experiment(cfg):
     algo = cfg['fitter']['algo_name'].lower()
     if algo == 'cco':
         from core.optimizer.cco_fitter import Fitter
+    elif algo == 'gd':
+        from core.optimizer.gd_fitter import Fitter
     elif algo == 'cs':
         from core.optimizer.cs_fitter import Fitter
     elif algo == 'ala':
@@ -58,6 +61,8 @@ def get_estimator_class(cfg):
 
     if est_type == 'npre':
         return NPREEstimator
+    if est_type == 'gd':
+        return GDEstimator
     if est_type in ['mm', 'mean measure']:
         return MeanMeasureEstimator
     raise ValueError(f"Unknown estimator type specified in config: {est_type}")
@@ -87,9 +92,9 @@ def prepare_3d_cfg(base_cfg):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='configs/fit_point_cloud.yaml')
-    parser.add_argument('--algo', type=str, default=None, choices=['cco', 'cs', 'ala'])
-    parser.add_argument('--estimator', type=str, default=None, choices=['npre', 'mm'])
+    parser.add_argument('--config', type=str, default='configs/fit_point_cloud_nurbs_stable.yaml')
+    parser.add_argument('--algo', type=str, default=None, choices=['cco', 'gd', 'cs', 'ala'])
+    parser.add_argument('--estimator', type=str, default=None, choices=['npre', 'gd', 'mm'])
     parser.add_argument('--model', type=str, default=None, choices=['curve', 'surface', 'nurbs_surface'])
     parser.add_argument('--data-file', type=str, default=None)
     parser.add_argument('--num-instances', type=int, default=None)

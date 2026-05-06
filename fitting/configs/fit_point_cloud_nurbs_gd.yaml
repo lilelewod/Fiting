@@ -1,7 +1,6 @@
-# Stable baseline for NURBS point-cloud fitting.
-# Use this first to verify that one low-flexibility patch can fit the target shape.
+# Gradient-descent validation config for NURBS point-cloud fitting.
 task_type: '3d'
-run_id: 14
+run_id: 17
 data_file: '/home/m25lll/code/Fiting/fitting/datasets/nurbs/00873042_lessp.ply'
 
 model:
@@ -16,21 +15,13 @@ model:
   weight_ub: 1.2
 
 device:
-  train_device: 'cuda:1'
+  train_device: 'cuda:0'
   cuda_deterministic: true
 seeds:
   - 65036
-  - 98754
-  - 8617
-  - 45169
-  - 29448
-  - 80323
-  - 17319
-  - 98776
-  - 79697
 
 estimator:
-  type: 'npre'
+  type: 'gd'
   horizontal_type: 'Circle'
   vertical_type: 'Parabola'
   data_resolution: 0.01
@@ -47,20 +38,32 @@ estimator:
   open3d_version: 'legacy'
 
 fitter:
-  algo_name: 'cco'
-  num_instances: 8
-  num_envs: 8
-  episodes_per_env: 16
-  max_episode: 120000
+  algo_name: 'gd'
+  num_instances: 1
+  num_envs: 1
+  episodes_per_env: 1
+  max_episode: 20000
+  gd_lr: 0.01
+  gd_eval_interval: 100
+  gd_data_batch_size: 0
+  gd_data_to_model_weight: 1.0
+  gd_model_to_data_weight: 1.0
+  gd_coverage_weight: 0.0
+  gd_coverage_threshold_factor: 2.5
+  gd_coverage_temperature_factor: 0.5
+  gd_smoothness_weight: 0.05
+  gd_bbox_weight: 0.2
+  gd_weight_reg_weight: 0.01
+  gd_overlap_weight: 0.05
 
 collector:
   name: 'hybrid'
-  num_episodes_per_rollout: 4
-  num_rollouts: 2
-  parallel: true
+  num_episodes_per_rollout: 1
+  num_rollouts: 1
+  parallel: false
   context: 'spawn'
-  reinforcement_episode_size: 30
-  evaluation_episode_size: 10
+  reinforcement_episode_size: 1
+  evaluation_episode_size: 1
 
 record:
   pulse_size: 2000
