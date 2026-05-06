@@ -65,7 +65,8 @@ fitter:
   gd_smoothness_weight: 0.1
   gd_bbox_weight: 0.2
   gd_weight_reg_weight: 0.01
-  gd_overlap_weight: 0.05                     # 多实例必须打开，避免 8 个面片重叠
+  gd_overlap_weight: 0.5                     # 从 0.05 大幅提高，防止面片重复拟合同一区域
+  gd_overlap_margin_factor: 4.0              # 重叠判定距离 4×0.01=0.04（之前硬编码2×0.01=0.02）
 
 collector:
   name: 'hybrid'

@@ -70,6 +70,7 @@ class Fitter:
         self.bbox_weight = float(fitter_cfg.get("gd_bbox_weight", 0.2))
         self.weight_reg_weight = float(fitter_cfg.get("gd_weight_reg_weight", 0.01))
         self.overlap_weight = float(fitter_cfg.get("gd_overlap_weight", 0.05))  # num_instances>1 时生效
+        self.overlap_margin_factor = float(fitter_cfg.get("gd_overlap_margin_factor", 2.0))  # × data_resolution
 
         # NURBS 结构参数
         self.num_ctrl_u = int(model_cfg["num_ctrl_u"])
@@ -239,7 +240,9 @@ class Fitter:
             overlap_penalty = torch.tensor(0.0, device=self.device)
             if base_cloud is not None and base_cloud.numel() > 0:
                 overlap_dist = torch.cdist(model_points.unsqueeze(0), base_cloud.unsqueeze(0), p=2).squeeze(0)
-                overlap_penalty = torch.relu(2.0 * self.data_resolution - overlap_dist.min(dim=1).values).mean()
+                overlap_penalty = torch.relu(
+                    self.overlap_margin_factor * self.data_resolution - overlap_dist.min(dim=1).values
+                ).mean()
 
             loss = (self.data_to_model_weight * data_to_model +
                     self.model_to_data_weight * model_to_data -
