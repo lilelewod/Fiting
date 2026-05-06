@@ -1,6 +1,6 @@
-# Gradient-descent validation config for NURBS point-cloud fitting.
+# GD vs CCO 对比实验
 task_type: '3d'
-run_id: 17
+run_id: 21                                   # 改进版：降低 smoothness + 温和 LR 退火
 data_file: '/home/m25lll/code/Fiting/fitting/datasets/nurbs/00873042_lessp.ply'
 
 model:
@@ -17,7 +17,16 @@ model:
 device:
   train_device: 'cuda:0'
   cuda_deterministic: true
-seeds: null
+seeds:
+  - 65036
+  - 98754
+  - 8617
+  - 45169
+  - 29448
+  - 80323
+  - 17319
+  - 98776
+  - 79697
 
 estimator:
   type: 'gd'
@@ -25,7 +34,7 @@ estimator:
   vertical_type: 'Parabola'
   data_resolution: 0.01
   model_resolution: 0.004
-  early_rejection: true
+  early_rejection: false                     # GD 不需要 early rejection
   regularization_factor: 1.2
   incremental_coverage: true
   overlap_penalty_factor: 2.0
@@ -38,22 +47,26 @@ estimator:
 
 fitter:
   algo_name: 'gd'
-  num_instances: 1
-  num_envs: 1
-  episodes_per_env: 1
-  max_episode: 20000
-  gd_lr: 0.01
-  gd_eval_interval: 100
-  gd_data_batch_size: 0
+  num_instances: 1                          # 先单实例，后续可加到 8 跟 CCO 对齐
+  max_episode: 20000                        # 20K 步
+
+  # ---- 训练控制 ----
+  gd_lr: 0.01                               # Adam 初始学习率
+  gd_lr_min_factor: 0.3                     # CosineAnnealing 最终 lr = 0.01×0.3 = 0.003（之前硬编码 0.05 = 0.0005 太低）
+  gd_eval_interval: 200                     # 每 200 步 NPRE 评估
+  gd_data_batch_size: 0                     # 0 = 全量数据
+
+  # ---- loss 权重 ----
+  # run_20: score 0.0352，前几千步收敛快，后 LR 降到 0.0005 后几乎停滞
   gd_data_to_model_weight: 1.0
   gd_model_to_data_weight: 1.0
-  gd_coverage_weight: 0.0
-  gd_coverage_threshold_factor: 2.5
-  gd_coverage_temperature_factor: 0.5
-  gd_smoothness_weight: 0.05
+  gd_coverage_weight: 0.3                   # 覆盖率奖励，核心里程碑
+  gd_coverage_threshold_factor: 2.5         # 覆盖阈值 2.5 × resolution = 0.025
+  gd_coverage_temperature_factor: 0.5       # sigmoid 温度 0.5 × resolution = 0.005
+  gd_smoothness_weight: 0.05                # run_20=0.1 偏高，曲面形变受限
   gd_bbox_weight: 0.2
   gd_weight_reg_weight: 0.01
-  gd_overlap_weight: 0.05
+  gd_overlap_weight: 0.0                    # 单实例无需重叠惩罚
 
 collector:
   name: 'hybrid'
