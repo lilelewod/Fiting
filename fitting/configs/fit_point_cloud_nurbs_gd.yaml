@@ -15,7 +15,7 @@ model:
   weight_ub: 1.2
 
 device:
-  train_device: 'cuda:0'
+  train_device: 'cuda:1'
   cuda_deterministic: true
 seeds:
   - 65036
