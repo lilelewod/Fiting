@@ -148,14 +148,11 @@ class Fitter:
         data = self.estimator.get_data()
         base_supporters = np.asarray(self.estimator.base_supporters, dtype=np.int64)
         if base_supporters.size == 0 or not self.exclude_covered:
-            return data  # 不排除，靠 overlap 惩罚分离实例
+            return data
 
         mask = np.ones(data.shape[0], dtype=bool)
         mask[np.unique(base_supporters)] = False
-        remaining = data[mask]
-        if remaining.shape[0] < max(64, self.num_ctrl_u * self.num_ctrl_v):
-            return data
-        return remaining
+        return data[mask]
 
     def _evaluate_candidate(self, control_points, weights):
         """用 NPRE 评分评估当前曲面质量"""

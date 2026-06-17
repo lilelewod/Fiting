@@ -1,7 +1,7 @@
 # GD vs CCO 对比实验 — 多实例版
 task_type: '3d'
-run_id: 28                                   # 4实例 + 6x6 + 硬排除 + overlap
-data_file: '/home/m25lll/code/Fiting/fitting/datasets/nurbs/00873042_lessp.ply'
+run_id: 1                                    # KSR42 Bunny
+data_file: '/home/m25lll/code/KSR42/KSR42_dataset/Simple/Bunny/bunny_150k.ply'
 
 model:
   type: 'nurbs_surface'
@@ -38,7 +38,7 @@ estimator:
 
 fitter:
   algo_name: 'gd'
-  num_instances: 4                          # 8→4，减少无效实例
+  num_instances: 8                          # 8→4，减少无效实例
   max_episode: 20000
 
   # ---- 训练控制 ----
@@ -70,6 +70,7 @@ collector:
   evaluation_episode_size: 1
 
 record:
+  root_dir: './outputs/gd/3d/nurbs_surface/ksr42/bunny/run_1/'
   pulse_size: 2000
   visualization: null
   use_thread_time: false

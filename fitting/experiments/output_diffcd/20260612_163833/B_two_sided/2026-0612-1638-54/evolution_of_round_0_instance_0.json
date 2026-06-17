@@ -1,0 +1,182 @@
+[
+  {
+    "episode": 1,
+    "elpased_time": 0.08889269828796387,
+    "score": 0.005007770522431477,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 3,
+    "elpased_time": 0.8433816432952881,
+    "score": 0.20910294883604358,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 5,
+    "elpased_time": 1.6401281356811523,
+    "score": 0.21141295659932494,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 7,
+    "elpased_time": 2.4336512088775635,
+    "score": 0.21410095187598754,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 9,
+    "elpased_time": 3.250525951385498,
+    "score": 0.21490644419291133,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 11,
+    "elpased_time": 4.065062046051025,
+    "score": 0.21522459565219415,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 15,
+    "elpased_time": 5.724905729293823,
+    "score": 0.2155611330957885,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 17,
+    "elpased_time": 6.526189804077148,
+    "score": 0.2156722304956321,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 19,
+    "elpased_time": 7.3047590255737305,
+    "score": 0.2159368403637752,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 21,
+    "elpased_time": 8.117940902709961,
+    "score": 0.21598285840877984,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 23,
+    "elpased_time": 8.870733499526978,
+    "score": 0.2160509763294884,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 25,
+    "elpased_time": 9.62458324432373,
+    "score": 0.21607963207896702,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 27,
+    "elpased_time": 10.380281925201416,
+    "score": 0.21610735834223965,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 29,
+    "elpased_time": 11.136181592941284,
+    "score": 0.21612734029041075,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 31,
+    "elpased_time": 11.932863712310791,
+    "score": 0.2161412942908283,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 33,
+    "elpased_time": 12.68686580657959,
+    "score": 0.21615500540874838,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 35,
+    "elpased_time": 13.452934265136719,
+    "score": 0.21616382865771355,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 37,
+    "elpased_time": 14.21537160873413,
+    "score": 0.21617148359996877,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 39,
+    "elpased_time": 15.02129340171814,
+    "score": 0.2161776507964575,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 41,
+    "elpased_time": 15.837181329727173,
+    "score": 0.2161841748586701,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  }
+]

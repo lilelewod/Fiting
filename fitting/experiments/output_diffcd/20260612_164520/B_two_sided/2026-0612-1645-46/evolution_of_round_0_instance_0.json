@@ -1,0 +1,92 @@
+[
+  {
+    "episode": 1,
+    "elpased_time": 0.08453917503356934,
+    "score": 0.001262831535529103,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 3,
+    "elpased_time": 0.833270788192749,
+    "score": 0.04233129148563191,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 5,
+    "elpased_time": 1.5850129127502441,
+    "score": 0.0654340508755318,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 7,
+    "elpased_time": 2.3811724185943604,
+    "score": 0.0682208014384061,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 9,
+    "elpased_time": 3.183166980743408,
+    "score": 0.07200533587502914,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 11,
+    "elpased_time": 3.9860353469848633,
+    "score": 0.07313230303577536,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 17,
+    "elpased_time": 6.3316216468811035,
+    "score": 0.07315275448600876,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 19,
+    "elpased_time": 7.124736547470093,
+    "score": 0.07339154554045332,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 21,
+    "elpased_time": 7.893385887145996,
+    "score": 0.07339942270179237,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 23,
+    "elpased_time": 8.66283369064331,
+    "score": 0.07342757760421634,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  }
+]
