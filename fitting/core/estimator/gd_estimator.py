@@ -185,22 +185,30 @@ class GDEstimator:
     def set_resolution(self, resolution):
         self.resolution = resolution
 
-    # ---- scoring (NPRE-based, same as npre estimator) ----
+    # ---- scoring (NPRE + MM) ----
     def estimate(self):
+        """同时计算 NPRE 和 MM 两个评分。
+
+        NPRE: (覆盖率^λ) / (归一化误差)    — 数据覆盖导向
+        MM:   (测度^λ) / (归一化误差)      — 几何测度导向（Zhang et al. PR 2019）
+
+        self.score 的取值由 estimator.scoring_mode 控制：'npre'（默认）或 'mm'。
+        """
         if self.data_kDTree is None or self.num_points == 0:
             print("no data or no model")
             self.score = 0
+            self.score_npre = 0
+            self.score_mm = 0
             return 0
 
         error = self.sum_errors / float(self.num_points)
         if np.isclose(error, 0.0):
-            print(
-                "the model-to-data error is too close to zero; clamping it for numerical stability."
-            )
             error = np.finfo(np.float32).eps
 
         factor = self.regularization_factor
         normalized_error = error / self.data_resolution
+
+        # ── NPRE: coverage-based regularizer ──
         if (
             self.cfg["estimator"].get("incremental_coverage", False)
             and self.base_supporters.size > 0
@@ -208,32 +216,50 @@ class GDEstimator:
             coverage_count = self.new_supporters.size
         else:
             coverage_count = self.supporters.size
-        normalized_regularizer = float(coverage_count) / float(self.num_data_points)
-        self.score_npre = (normalized_regularizer ** factor) / normalized_error
+        normalized_reg_npre = float(coverage_count) / float(self.num_data_points)
+        self.score_npre = (normalized_reg_npre ** factor) / normalized_error
 
+        # ── MM: measure-based regularizer (Zhang et al. PR 2019) ──
+        bbox_diag = float(np.linalg.norm(self.max_point - self.min_point))
+        measure_scale = max(bbox_diag * bbox_diag,
+                            self.data_resolution * self.data_resolution,
+                            np.finfo(np.float32).eps)
+        normalized_measure = self.measure / measure_scale
+        self.score_mm = (normalized_measure ** factor) / normalized_error
+
+        # ── penalties (applied to both scores) ──
         overlap_penalty = float(self.cfg["estimator"].get("overlap_penalty_factor", 0.0))
         if overlap_penalty > 0.0 and self.overlap_ratio > 0.0:
-            penalty = max(0.0, 1.0 - self.overlap_ratio) ** overlap_penalty
-            self.score_npre *= penalty
+            p = max(0.0, 1.0 - self.overlap_ratio) ** overlap_penalty
+            self.score_npre *= p
+            self.score_mm *= p
 
         outlier_penalty = float(self.cfg["estimator"].get("outlier_penalty_factor", 0.0))
         if outlier_penalty > 0.0 and self.outlier_ratio > 0.0:
-            penalty = max(0.0, 1.0 - self.outlier_ratio) ** outlier_penalty
-            self.score_npre *= penalty
+            p = max(0.0, 1.0 - self.outlier_ratio) ** outlier_penalty
+            self.score_npre *= p
+            self.score_mm *= p
 
         bbox_penalty = float(self.cfg["estimator"].get("bbox_penalty_factor", 0.0))
         if bbox_penalty > 0.0 and self.bbox_violation_ratio > 0.0:
-            penalty = max(0.0, 1.0 - self.bbox_violation_ratio) ** bbox_penalty
-            self.score_npre *= penalty
+            p = max(0.0, 1.0 - self.bbox_violation_ratio) ** bbox_penalty
+            self.score_npre *= p
+            self.score_mm *= p
 
         smoothness_penalty = float(
             self.cfg["estimator"].get("control_smoothness_penalty_factor", 0.0)
         )
         if smoothness_penalty > 0.0 and self.control_smoothness > 0.0:
-            penalty = 1.0 / (1.0 + smoothness_penalty * self.control_smoothness)
-            self.score_npre *= penalty
+            p = 1.0 / (1.0 + smoothness_penalty * self.control_smoothness)
+            self.score_npre *= p
+            self.score_mm *= p
 
-        self.score = self.score_npre
+        # ── 选择评分模式 ──
+        scoring_mode = self.cfg["estimator"].get("scoring_mode", "npre")
+        if scoring_mode == "mm":
+            self.score = self.score_mm
+        else:
+            self.score = self.score_npre
         return self.score
 
     # ---- model-to-data error ----

@@ -1,0 +1,54 @@
+# MM-aligned GD — 单实例快速验证
+#     python entrypoints/fit_point_cloud.py --config configs/fit_mm_gd_quick.yaml
+
+task_type: '3d'
+run_id: 1
+data_file: '/home/m25lll/code/KSR42/KSR42_dataset/Simple/Bunny/bunny_150k.ply'
+
+# ── 模型 ──
+model:
+  type: 'nurbs_surface'
+  num_ctrl_u: 6
+  num_ctrl_v: 6
+  degree_u: 3
+  degree_v: 3
+  sample_u: 60
+  sample_v: 60
+  weight_lb: 0.8
+  weight_ub: 1.2
+
+# ── 设备 ──
+device:
+  train_device: 'cuda:1'
+  cuda_deterministic: true
+seeds: null
+
+# ── 评分器: Mean Measure (Zhang et al. PR 2019) ──
+estimator:
+  type: 'mm'
+  data_resolution: 0.01
+  model_resolution: 0.004
+  regularization_factor: 1.2
+
+# ── 优化器: GD + MM-aligned loss ──
+fitter:
+  algo_name: 'gd'
+  num_instances: 1
+
+  max_episode: 10000
+  gd_lr: 0.01
+  gd_lr_min_factor: 0.1
+  gd_eval_interval: 200
+  gd_data_batch_size: 0
+
+  gd_mm_aligned: true
+  gd_coverage_weight: 0.3
+  gd_smoothness_weight: 0.1
+  gd_bbox_weight: 0.2
+  gd_weight_reg_weight: 0.01
+
+# ── 输出 ──
+record:
+  root_dir: './outputs/mm_gd_quick/'
+  pulse_size: 500
+  verbose: true

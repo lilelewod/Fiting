@@ -23,11 +23,14 @@ class Fitter:
 
     loss =  data_to_model_weight * data_to_model      (数据→模型 Chamfer 距离)
           + model_to_data_weight * model_to_data      (模型→数据 Chamfer 距离)
-          - coverage_weight     * soft_coverage       (软覆盖率奖励，sigmoid)
+          - coverage_weight     * soft_coverage       (软覆盖率奖励，sigmoid)    [默认]
+          - measure_weight      * model_measure       (Mean Measure 几何测度)    [可选]
           + smoothness_weight   * smoothness          (控制网格二阶光滑度)
           + bbox_weight         * bbox_penalty        (包围盒越界 relu 惩罚)
           + weight_reg_weight   * weight_reg          (NURBS 权重 L2 正则化)
           + overlap_weight      * overlap_penalty     (多实例间重叠惩罚)
+
+    coverage 与 measure 二选一：measure_weight>0 时优先用 MM 的几何测度。
     """
 
     def __init__(self, cfg):
@@ -66,12 +69,33 @@ class Fitter:
         self.coverage_weight = float(fitter_cfg.get("gd_coverage_weight", 0.5))  # 0=关闭覆盖率奖励
         self.coverage_threshold_factor = float(fitter_cfg.get("gd_coverage_threshold_factor", 2.5))
         self.coverage_temperature_factor = float(fitter_cfg.get("gd_coverage_temperature_factor", 0.5))
+        # Mean Measure 模式：用几何测度（曲面面积/曲线长度）替代覆盖率奖励
+        self.measure_weight = float(fitter_cfg.get("gd_measure_weight", 0.0))  # 0=关闭measure, >0=启用MM
+        # measure_scale is auto-computed below after data bounds are loaded
         self.smoothness_weight = float(fitter_cfg.get("gd_smoothness_weight", 0.05))
         self.bbox_weight = float(fitter_cfg.get("gd_bbox_weight", 0.2))
         self.weight_reg_weight = float(fitter_cfg.get("gd_weight_reg_weight", 0.01))
         self.overlap_weight = float(fitter_cfg.get("gd_overlap_weight", 0.05))  # num_instances>1 时生效
         self.overlap_margin_factor = float(fitter_cfg.get("gd_overlap_margin_factor", 2.0))  # × data_resolution
         self.exclude_covered = bool(fitter_cfg.get("gd_exclude_covered", True))
+
+        # MM-aligned 模式：自动调整 loss 权重与 MM 评分一致
+        #   - model_to_data 权重大于 data_to_model（MM 关注 model→data 误差）
+        #   - 用 measure 替代 coverage（MM 用几何测度而非覆盖计数）
+        #   - 降低 smoothness（测度增长需要空间）
+        self.mm_aligned = bool(fitter_cfg.get("gd_mm_aligned", False))
+        if self.mm_aligned:
+            if self.model_to_data_weight <= self.data_to_model_weight:
+                self.model_to_data_weight = self.data_to_model_weight * 2.0
+            if self.measure_weight <= 0 and self.coverage_weight > 0:
+                self.measure_weight = self.coverage_weight
+                self.coverage_weight = 0.0
+            if self.smoothness_weight > 0.03:
+                self.smoothness_weight = 0.03
+            print("[MM-aligned] loss权重已自动调整:")
+            print(f"  data_to_model={self.data_to_model_weight}, model_to_data={self.model_to_data_weight}")
+            print(f"  measure={self.measure_weight}, coverage={self.coverage_weight}")
+            print(f"  smoothness={self.smoothness_weight}")
 
         # NURBS 结构参数
         self.num_ctrl_u = int(model_cfg["num_ctrl_u"])
@@ -112,6 +136,14 @@ class Fitter:
         self.data_max = torch.as_tensor(self.estimator.max_point, dtype=torch.float32, device=self.device)
         self.data_resolution = float(self.estimator.data_resolution)
 
+        # measure_scale 自动设为数据包围盒对角线平方（≈包围盒面积量级），若用户未显式设置
+        if float(fitter_cfg.get("gd_measure_scale", 0.0)) <= 0:
+            bbox_diag = float(torch.linalg.norm(self.data_max - self.data_min).item())
+            self.measure_scale = max(bbox_diag * bbox_diag, self.data_resolution * self.data_resolution,
+                                     np.finfo(np.float32).eps)
+        else:
+            self.measure_scale = float(fitter_cfg["gd_measure_scale"])
+
     def _sample_surface(self, control_points, weights):
         """NURBS 曲面采样：分子/分母分别做基函数组合，得到齐次坐标归一化后的曲面点云"""
         weighted_ctrl = control_points * weights[..., None]
@@ -119,6 +151,29 @@ class Fitter:
         denominators = torch.einsum("ui,vj,ij->uv", self.basis_u, self.basis_v, weights)
         denominators = denominators.clamp_min(1e-8).unsqueeze(-1)
         return (numerators / denominators).reshape(-1, self.dimension)
+
+    def _compute_measure(self, control_points, weights):
+        """可微 NURBS 曲面面积（Mean Measure 的 |M| 项）。
+
+        将采样网格三角化后用 cross product 算面积，全 torch 可导。
+        与 _sample_surface 复用同样的 basis_u / basis_v，不额外采样。
+        """
+        weighted_ctrl = control_points * weights[..., None]
+        numerators = torch.einsum("ui,vj,ijd->uvd", self.basis_u, self.basis_v, weighted_ctrl)
+        denominators = torch.einsum("ui,vj,ij->uv", self.basis_u, self.basis_v, weights)
+        denominators = denominators.clamp_min(1e-8).unsqueeze(-1)
+        grid = numerators / denominators  # (sample_u, sample_v, dim)
+
+        # 三角剖分：每个矩形格子分成两个三角形
+        p00 = grid[:-1, :-1]  # (su-1, sv-1, dim)
+        p10 = grid[1:, :-1]
+        p01 = grid[:-1, 1:]
+        p11 = grid[1:, 1:]
+
+        # 三角形面积 = 0.5 * |cross(edge1, edge2)|
+        area1 = 0.5 * torch.linalg.norm(torch.cross(p10 - p00, p01 - p00, dim=-1), dim=-1)
+        area2 = 0.5 * torch.linalg.norm(torch.cross(p11 - p10, p01 - p10, dim=-1), dim=-1)
+        return area1.sum() + area2.sum()
 
     def _initial_control_grid(self, target_points):
         """SVD 主方向初始化控制网格，沿点云前两个主方向展开控制点"""
@@ -216,9 +271,18 @@ class Fitter:
             data_to_model = data_to_model_min.mean()
             model_to_data = model_to_data_min.mean()
 
-            # 软覆盖率奖励（sigmoid）：距离 < 阈值 → 视为被覆盖
-            soft_coverage = torch.sigmoid(
-                (coverage_threshold - data_to_model_min) / coverage_temperature).mean()
+            # 覆盖率奖励（coverage）或 Mean Measure 几何测度（measure）
+            soft_coverage = torch.tensor(0.0, device=self.device)
+            model_measure = torch.tensor(0.0, device=self.device)
+
+            if self.measure_weight > 0:
+                # MM 模式：用几何测度（曲面面积）替代覆盖率奖励，无阈值
+                raw_measure = self._compute_measure(control, weights)
+                model_measure = raw_measure / max(self.measure_scale, np.finfo(np.float32).eps)
+            elif self.coverage_weight > 0:
+                # 传统模式：sigmoid 软覆盖率
+                soft_coverage = torch.sigmoid(
+                    (coverage_threshold - data_to_model_min) / coverage_temperature).mean()
 
             # 光滑度：控制网格 u/v 方向二阶差分
             second_u = control[2:, :, :] - 2.0 * control[1:-1, :, :] + control[:-2, :, :]
@@ -244,7 +308,8 @@ class Fitter:
 
             loss = (self.data_to_model_weight * data_to_model +
                     self.model_to_data_weight * model_to_data -
-                    self.coverage_weight * soft_coverage +
+                    self.coverage_weight * soft_coverage -
+                    self.measure_weight * model_measure +
                     self.smoothness_weight * smoothness +
                     self.bbox_weight * bbox_penalty +
                     self.weight_reg_weight * weight_reg +

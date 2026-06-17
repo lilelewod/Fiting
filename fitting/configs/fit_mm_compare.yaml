@@ -1,0 +1,67 @@
+# MM评分对比实验 — GD vs CCO vs CS vs ALA
+#      python entrypoints/fit_point_cloud.py --config configs/fit_mm_compare.yaml --algo gd
+#      python entrypoints/fit_point_cloud.py --config configs/fit_mm_compare.yaml --algo cco
+#      python entrypoints/fit_point_cloud.py --config configs/fit_mm_compare.yaml --algo cs
+#      python entrypoints/fit_point_cloud.py --config configs/fit_mm_compare.yaml --algo ala
+
+task_type: '3d'
+run_id: 1
+data_file: '/home/m25lll/code/KSR42/KSR42_dataset/Simple/Bunny/bunny_150k.ply'
+
+# ── 模型 ──
+model:
+  type: 'nurbs_surface'
+  num_ctrl_u: 6
+  num_ctrl_v: 6
+  degree_u: 3
+  degree_v: 3
+  sample_u: 60
+  sample_v: 60
+  weight_lb: 0.8
+  weight_ub: 1.2
+
+# ── 设备 ──
+device:
+  train_device: 'cuda:1'
+  cuda_deterministic: true
+seeds: null
+
+# ── 评分器: Mean Measure (Zhang et al. PR 2019) ──
+estimator:
+  type: 'mm'
+  data_resolution: 0.01
+  model_resolution: 0.004
+  regularization_factor: 1.2
+  incremental_coverage: true
+  outlier_distance_factor: 2.5
+  outlier_penalty_factor: 0.0           # MM天然抗离群点，不需要penalty
+  bbox_margin_factor: 1.0
+  bbox_penalty_factor: 0.0
+  overlap_penalty_factor: 0.0
+  control_smoothness_penalty_factor: 0.0
+
+# ── 优化器 (algo_name 由 --algo 覆盖) ──
+fitter:
+  algo_name: 'gd'
+  num_instances: 4
+
+  max_episode: 20000
+  gd_lr: 0.01
+  gd_lr_min_factor: 0.05
+  gd_eval_interval: 200
+  gd_data_batch_size: 0
+
+  gd_mm_aligned: true
+  gd_coverage_weight: 0.3
+  gd_smoothness_weight: 0.1
+  gd_bbox_weight: 0.2
+  gd_weight_reg_weight: 0.01
+  gd_overlap_weight: 0.2
+  gd_exclude_covered: true
+
+# ── 输出 ──
+record:
+  root_dir: './outputs/mm_compare/'
+  pulse_size: 2000
+  verbose: true
+  trim_final_mesh: true

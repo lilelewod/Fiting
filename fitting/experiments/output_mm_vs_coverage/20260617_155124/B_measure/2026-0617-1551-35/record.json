@@ -1,0 +1,123 @@
+{
+  "cfg": {
+    "task_type": "3d",
+    "data_file": "/home/m25lll/code/Fiting/fitting/experiments/output_mm_vs_coverage/20260617_155124/input.ply",
+    "run_id": 1,
+    "model": {
+      "type": "nurbs_surface",
+      "num_ctrl_u": 6,
+      "num_ctrl_v": 6,
+      "degree_u": 3,
+      "degree_v": 3,
+      "sample_u": 40,
+      "sample_v": 40,
+      "weight_lb": 0.8,
+      "weight_ub": 1.2
+    },
+    "device": "<not serializable>",
+    "seeds": [
+      42
+    ],
+    "estimator": {
+      "type": "gd",
+      "data_file": "/home/m25lll/code/Fiting/fitting/experiments/output_mm_vs_coverage/20260617_155124/input.ply",
+      "data_resolution": 0.02,
+      "model_resolution": 0.008,
+      "rule_class": "<from models.surface.nurbs_surface_rule import NURBSSurfaceRule>",
+      "estimator_class": "<from core.estimator.gd_estimator import GDEstimator>",
+      "estimator_instance": null,
+      "load_data_fn": "<from experiments.diffcd_verify import load_data>",
+      "regularization_factor": 1.2,
+      "incremental_coverage": false,
+      "overlap_penalty_factor": 0.0,
+      "outlier_distance_factor": 0.0,
+      "outlier_penalty_factor": 0.0,
+      "bbox_margin_factor": 0.0,
+      "bbox_penalty_factor": 0.0,
+      "control_smoothness_penalty_factor": 0.5
+    },
+    "fitter": {
+      "algo_name": "gd",
+      "num_instances": 1,
+      "max_episode": 3000,
+      "gd_lr": 0.01,
+      "gd_lr_min_factor": 0.1,
+      "gd_eval_interval": 250,
+      "gd_data_batch_size": 0,
+      "gd_data_to_model_weight": 1.0,
+      "gd_model_to_data_weight": 1.0,
+      "gd_coverage_weight": 0.0,
+      "gd_coverage_threshold_factor": 2.5,
+      "gd_coverage_temperature_factor": 0.5,
+      "gd_smoothness_weight": 0.01,
+      "gd_bbox_weight": 0.0,
+      "gd_weight_reg_weight": 0.01,
+      "gd_overlap_weight": 0.0,
+      "gd_overlap_margin_factor": 2.0,
+      "gd_exclude_covered": false,
+      "gd_measure_weight": 0.3
+    },
+    "collector": {
+      "name": "hybrid",
+      "num_episodes_per_rollout": 1,
+      "num_rollouts": 1,
+      "parallel": false,
+      "context": "spawn",
+      "reinforcement_episode_size": 1,
+      "evaluation_episode_size": 1
+    },
+    "record": {
+      "root_dir": "/home/m25lll/code/Fiting/fitting/experiments/output_mm_vs_coverage/20260617_155124/B_measure",
+      "pulse_size": 1000,
+      "visualization": null,
+      "use_thread_time": false,
+      "verbose": true,
+      "trim_final_mesh": false,
+      "uv_trim_final_mesh": false
+    },
+    "raw_device": {
+      "train_device": "cuda:1",
+      "cuda_deterministic": false
+    }
+  },
+  "dimension": 3,
+  "lower_bound": null,
+  "upper_bound": null,
+  "log_dir": "/home/m25lll/code/Fiting/fitting/experiments/output_mm_vs_coverage/20260617_155124/B_measure/2026-0617-1551-35/",
+  "out_json_file_name": "/home/m25lll/code/Fiting/fitting/experiments/output_mm_vs_coverage/20260617_155124/B_measure/2026-0617-1551-35/record.json",
+  "timestamp": "2026-0617-1551-35",
+  "name": -1,
+  "verbose": true,
+  "clock": "<not serializable>",
+  "start_time": 1781682695.8498127,
+  "plotter": null,
+  "pulse_size": 1000,
+  "update_count": 1,
+  "episode": 1,
+  "total_episode": 1,
+  "token_index": 0,
+  "data_cloud": "<not serializable>",
+  "best_score": 0.044283134605180574,
+  "best_cloud": null,
+  "best_estimator": null,
+  "best_token_set": [
+    null
+  ],
+  "best_color": null,
+  "best_sub_record": 0,
+  "evolving_scores": [
+    0.044283134605180574
+  ],
+  "evolving_episodes": [
+    1
+  ],
+  "evolving_times": [
+    0.11690950393676758
+  ],
+  "evolving_actions": [],
+  "evolving_traits": [],
+  "evolutions": "see the files named evolution_round_{}_of_instance_{}.json",
+  "base_cloud": "<not serializable>",
+  "base_color": "<not serializable>",
+  "round": 0
+}

@@ -184,46 +184,24 @@ class MeanMeasureEstimator:
     def set_resolution(self, resolution):
         self.resolution = resolution
 
-    # ---- scoring (mean-measure) ----
+    # ---- scoring (Mean Measure, Zhang et al. PR 2019) ----
     def estimate(self):
+        """MM = |M|^λ / (d(M,D) / δ)
+
+        |M|: 模型几何测度, d(M,D): 模型→数据平均距离, δ: 数据分辨率
+        model→data 方向天然抗离群点，无需阈值。
+        """
         if self.data_kDTree is None or self.num_points == 0:
-            print("no data or no model")
-            self.score = 0
-            return 0
+            self.score_mm = 0.0
+            self.score = 0.0
+            return 0.0
 
         error = self.sum_errors / float(self.num_points)
         if np.isclose(error, 0.0):
-            print(
-                "the model-to-data error is too close to zero; clamping it for numerical stability."
-            )
             error = np.finfo(np.float32).eps
 
-        factor = self.regularization_factor
         normalized_error = error / self.data_resolution
-        self.score_mm = (self.measure ** factor) / normalized_error
-
-        overlap_penalty = float(self.cfg["estimator"].get("overlap_penalty_factor", 0.0))
-        if overlap_penalty > 0.0 and self.overlap_ratio > 0.0:
-            penalty = max(0.0, 1.0 - self.overlap_ratio) ** overlap_penalty
-            self.score_mm *= penalty
-
-        outlier_penalty = float(self.cfg["estimator"].get("outlier_penalty_factor", 0.0))
-        if outlier_penalty > 0.0 and self.outlier_ratio > 0.0:
-            penalty = max(0.0, 1.0 - self.outlier_ratio) ** outlier_penalty
-            self.score_mm *= penalty
-
-        bbox_penalty = float(self.cfg["estimator"].get("bbox_penalty_factor", 0.0))
-        if bbox_penalty > 0.0 and self.bbox_violation_ratio > 0.0:
-            penalty = max(0.0, 1.0 - self.bbox_violation_ratio) ** bbox_penalty
-            self.score_mm *= penalty
-
-        smoothness_penalty = float(
-            self.cfg["estimator"].get("control_smoothness_penalty_factor", 0.0)
-        )
-        if smoothness_penalty > 0.0 and self.control_smoothness > 0.0:
-            penalty = 1.0 / (1.0 + smoothness_penalty * self.control_smoothness)
-            self.score_mm *= penalty
-
+        self.score_mm = (self.measure ** self.regularization_factor) / normalized_error
         self.score = self.score_mm
         return self.score
 
