@@ -3,7 +3,7 @@ task_type: '3d'             # 通用 3D 点云拟合入口
 run_id: 12
 # 替换为你要测试的 PLY 点云文件路径
 # 也可以通过命令行覆盖: --data-file /abs/path/to/input.ply
-data_file: '/home/m25lll/code/Fiting/fitting/datasets/nurbs/00873042_lessp.ply'
+data_file: '/home/m25lll/code/Fiting/fitting/datasets/synthetic/saddle_3k.ply'
 
 model:
   # 可选: curve, surface, nurbs_surface
@@ -33,7 +33,7 @@ seeds: null
 
 # ===== 评估器设置 =====
 estimator:
-  type: 'npre'              # 可选项: npre, mm
+  type: 'mm'              # 可选项: npre, mm
   horizontal_type: 'Circle' # 仅 curve 模型使用: Line, Circle, Spiral
   vertical_type: 'Parabola' # 仅 curve 模型使用: Line, Parabola
   data_resolution: 0.01     # 输入点云的数据分辨率；可命令行覆盖: --data-resolution
@@ -45,10 +45,10 @@ estimator:
 # ===== 核心寻优算法设置 =====
 fitter:
   algo_name: 'cco'          # 一键切换算法: cco, cs, ala
-  num_instances: 10         # 多实例拟合：顺序拟合 5 张 NURBS patch
+  num_instances: 1         # 多实例拟合：顺序拟合 5 张 NURBS patch
   num_envs: 4
   episodes_per_env: 8
-  max_episode: 120000
+  max_episode: 10000
   # 常用覆盖:
   # --num-instances 5 --num-envs 1 --episodes-per-env 6 --max-episode 60
 

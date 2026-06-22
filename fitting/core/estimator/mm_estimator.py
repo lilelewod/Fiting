@@ -186,10 +186,11 @@ class MeanMeasureEstimator:
 
     # ---- scoring (Mean Measure, Zhang et al. PR 2019) ----
     def estimate(self):
-        """MM = |M|^λ / (d(M,D) / δ)
+        """MM = |M̃|^λ / (d(M,D) / δ)
 
-        |M|: 模型几何测度, d(M,D): 模型→数据平均距离, δ: 数据分辨率
-        model→data 方向天然抗离群点，无需阈值。
+        |M̃| = |M| / S  归一化测度（S = 数据包围盒对角线²）
+        d(M,D): 模型→数据平均距离
+        δ: 数据分辨率
         """
         if self.data_kDTree is None or self.num_points == 0:
             self.score_mm = 0.0
@@ -200,8 +201,16 @@ class MeanMeasureEstimator:
         if np.isclose(error, 0.0):
             error = np.finfo(np.float32).eps
 
+        # 测度归一化：消除膨胀曲面的虚高 score
+        bbox_extent = self.max_point - self.min_point
+        data_scale = float(np.linalg.norm(bbox_extent))
+        measure_norm = max(data_scale * data_scale,
+                           self.data_resolution * self.data_resolution,
+                           np.finfo(np.float32).eps)
+        normalized_measure = self.measure / measure_norm
+
         normalized_error = error / self.data_resolution
-        self.score_mm = (self.measure ** self.regularization_factor) / normalized_error
+        self.score_mm = (normalized_measure ** self.regularization_factor) / normalized_error
         self.score = self.score_mm
         return self.score
 

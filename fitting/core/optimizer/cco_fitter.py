@@ -82,7 +82,6 @@ class Fitter:
     def optimize_instance(self):
         """核心 CCO 算法：用于寻找单一模型实例的最优参数"""
         dim = self.action_dim
-        # 在连续参数空间中，框架将其统一归一化为 [-1, 1]
         lower_bound = np.full(dim, -1.)
         upper_bound = np.full(dim, 1.)
         nPop = self.population_size

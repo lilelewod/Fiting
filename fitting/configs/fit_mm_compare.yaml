@@ -6,13 +6,13 @@
 
 task_type: '3d'
 run_id: 1
-data_file: '/home/m25lll/code/KSR42/KSR42_dataset/Simple/Bunny/bunny_150k.ply'
+data_file: '/home/m25lll/code/Fiting/fitting/datasets/synthetic/half_cylinder_3k.ply'
 
 # ── 模型 ──
 model:
-  type: 'nurbs_surface'
+  type: 'cylinder' # 可选: curve, surface, nurbs_surface, cylinder
   num_ctrl_u: 6
-  num_ctrl_v: 6
+  num_ctrl_v: 6 #控制网格
   degree_u: 3
   degree_v: 3
   sample_u: 60
@@ -42,22 +42,28 @@ estimator:
 
 # ── 优化器 (algo_name 由 --algo 覆盖) ──
 fitter:
-  algo_name: 'gd'
-  num_instances: 4
+  algo_name: 'cco'
+  num_instances: 1
 
-  max_episode: 20000
+  max_episode: 10000              # 随机起步需要更多步
   gd_lr: 0.01
-  gd_lr_min_factor: 0.05
+  gd_lr_min_factor: 0.1
   gd_eval_interval: 200
   gd_data_batch_size: 0
 
-  gd_mm_aligned: true
-  gd_coverage_weight: 0.3
-  gd_smoothness_weight: 0.1
-  gd_bbox_weight: 0.2
+  gd_init: 'svd'                    # 点云数据用PCA初始化
+  gd_mm_aligned: false
+  gd_measure_weight: 0.05          # 微弱测度奖励
+  gd_coverage_weight: 0.0
+  gd_data_to_model_weight: 1.0
+  gd_model_to_data_weight: 1.0     # 双向平权
+  gd_smoothness_weight: 0.05
+  gd_bbox_weight: 2.0              # 强力压住越界
   gd_weight_reg_weight: 0.01
-  gd_overlap_weight: 0.2
-  gd_exclude_covered: true
+
+  # CCO/CS/ALA 需要的参数
+  num_envs: 8
+  episodes_per_env: 20
 
 # ── 输出 ──
 record:

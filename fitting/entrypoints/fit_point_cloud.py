@@ -35,6 +35,10 @@ def get_rule_class(cfg):
         from models.surface.nurbs_surface_rule import NURBSSurfaceRule
 
         return NURBSSurfaceRule
+    if model_type == 'cylinder':
+        from models.surface.cylinder_rule import CylinderRule
+
+        return CylinderRule
     raise ValueError(f"Unknown 3D model type: {model_type}")
 
 

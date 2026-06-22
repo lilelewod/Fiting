@@ -97,40 +97,41 @@ class Fitter:
             print(f"  measure={self.measure_weight}, coverage={self.coverage_weight}")
             print(f"  smoothness={self.smoothness_weight}")
 
-        # NURBS 结构参数
-        self.num_ctrl_u = int(model_cfg["num_ctrl_u"])
-        self.num_ctrl_v = int(model_cfg["num_ctrl_v"])
-        self.degree_u = int(model_cfg["degree_u"])
-        self.degree_v = int(model_cfg["degree_v"])
-        self.sample_u = int(model_cfg["sample_u"])
-        self.sample_v = int(model_cfg["sample_v"])
+        # 模型类型判断
+        self._model_type = str(model_cfg.get('type', 'nurbs_surface')).lower()
         self.dimension = int(self.estimator.dimension)
 
-        # 预计算 B 样条基函数
-        basis_u = _basis_functions(
-            np.linspace(0.0, 1.0, self.sample_u, dtype=np.float32),
-            self.num_ctrl_u, self.degree_u, self.rule.knot_u,
-        )
-        basis_v = _basis_functions(
-            np.linspace(0.0, 1.0, self.sample_v, dtype=np.float32),
-            self.num_ctrl_v, self.degree_v, self.rule.knot_v,
-        )
-        self.basis_u = torch.as_tensor(basis_u, dtype=torch.float32, device=self.device)
-        self.basis_v = torch.as_tensor(basis_v, dtype=torch.float32, device=self.device)
+        if self._model_type in ('nurbs_surface', 'surface'):
+            self.num_ctrl_u = int(model_cfg["num_ctrl_u"])
+            self.num_ctrl_v = int(model_cfg["num_ctrl_v"])
+            self.degree_u = int(model_cfg["degree_u"])
+            self.degree_v = int(model_cfg["degree_v"])
+            self.sample_u = int(model_cfg["sample_u"])
+            self.sample_v = int(model_cfg["sample_v"])
 
-        # 控制点上下界，用于投影约束
-        self.ctrl_lb = torch.as_tensor(
-            self.rule.lb[: self.num_ctrl_u * self.num_ctrl_v * self.dimension].reshape(
-                self.num_ctrl_u, self.num_ctrl_v, self.dimension),
-            dtype=torch.float32, device=self.device,
-        )
-        self.ctrl_ub = torch.as_tensor(
-            self.rule.ub[: self.num_ctrl_u * self.num_ctrl_v * self.dimension].reshape(
-                self.num_ctrl_u, self.num_ctrl_v, self.dimension),
-            dtype=torch.float32, device=self.device,
-        )
-        self.weight_lb = float(model_cfg.get("weight_lb", 0.2))
-        self.weight_ub = float(model_cfg.get("weight_ub", 3.0))
+            basis_u = _basis_functions(
+                np.linspace(0.0, 1.0, self.sample_u, dtype=np.float32),
+                self.num_ctrl_u, self.degree_u, self.rule.knot_u,
+            )
+            basis_v = _basis_functions(
+                np.linspace(0.0, 1.0, self.sample_v, dtype=np.float32),
+                self.num_ctrl_v, self.degree_v, self.rule.knot_v,
+            )
+            self.basis_u = torch.as_tensor(basis_u, dtype=torch.float32, device=self.device)
+            self.basis_v = torch.as_tensor(basis_v, dtype=torch.float32, device=self.device)
+
+            self.ctrl_lb = torch.as_tensor(
+                self.rule.lb[: self.num_ctrl_u * self.num_ctrl_v * self.dimension].reshape(
+                    self.num_ctrl_u, self.num_ctrl_v, self.dimension),
+                dtype=torch.float32, device=self.device,
+            )
+            self.ctrl_ub = torch.as_tensor(
+                self.rule.ub[: self.num_ctrl_u * self.num_ctrl_v * self.dimension].reshape(
+                    self.num_ctrl_u, self.num_ctrl_v, self.dimension),
+                dtype=torch.float32, device=self.device,
+            )
+            self.weight_lb = float(model_cfg.get("weight_lb", 0.2))
+            self.weight_ub = float(model_cfg.get("weight_ub", 3.0))
 
         self.data_min = torch.as_tensor(self.estimator.min_point, dtype=torch.float32, device=self.device)
         self.data_max = torch.as_tensor(self.estimator.max_point, dtype=torch.float32, device=self.device)
@@ -151,6 +152,46 @@ class Fitter:
         denominators = torch.einsum("ui,vj,ij->uv", self.basis_u, self.basis_v, weights)
         denominators = denominators.clamp_min(1e-8).unsqueeze(-1)
         return (numerators / denominators).reshape(-1, self.dimension)
+
+    def _cylinder_forward(self, action):
+        """圆柱可微前向：action(7,) → (points, measure)。全 torch 可导。"""
+        lo = torch.as_tensor(self.rule.lb, dtype=torch.float32, device=self.device)
+        hi = torch.as_tensor(self.rule.ub, dtype=torch.float32, device=self.device)
+        p = lo + (hi - lo) * (action + 1.0) / 2.0  # [-1,1] → 世界坐标
+
+        x0, y0, z0 = p[0], p[1], p[2]
+        az, el = p[3], p[4]
+        r = torch.clamp(p[5], min=0.01)
+        h = torch.clamp(p[6], min=0.01)
+
+        # 轴方向
+        axis = torch.stack([torch.cos(az) * torch.cos(el),
+                            torch.sin(az) * torch.cos(el),
+                            torch.sin(el)])
+        axis = axis / (axis.norm() + 1e-8)
+
+        # 两个正交方向
+        ref = torch.tensor([0., 0., 1.], device=self.device)
+        if torch.abs(axis[2]) > 0.9:
+            ref = torch.tensor([1., 0., 0.], device=self.device)
+        u_dir = torch.cross(axis, ref)
+        u_dir = u_dir / (u_dir.norm() + 1e-8)
+        v_dir = torch.cross(axis, u_dir)
+
+        # 采样网格
+        su, sv = 40, 20
+        u = torch.linspace(0, 2 * torch.pi, su, device=self.device)
+        v = torch.linspace(0, h, sv, device=self.device)
+        uu, vv = torch.meshgrid(u, v, indexing='ij')
+        uu, vv = uu.unsqueeze(-1), vv.unsqueeze(-1)
+
+        base = torch.stack([x0, y0, z0])
+        radius_vec = r * (torch.cos(uu) * u_dir + torch.sin(uu) * v_dir)
+        axis_vec = vv * axis
+        points = (base + radius_vec + axis_vec).reshape(-1, 3)
+
+        measure = 2.0 * torch.pi * r * h
+        return points, measure
 
     def _compute_measure(self, control_points, weights):
         """可微 NURBS 曲面面积（Mean Measure 的 |M| 项）。
@@ -176,8 +217,21 @@ class Fitter:
         return area1.sum() + area2.sum()
 
     def _initial_control_grid(self, target_points):
-        """SVD 主方向初始化控制网格，沿点云前两个主方向展开控制点"""
+        """初始化控制网格。gd_init='svd' 用主方向展开，'random' 用均匀随机。
+
+        随机模式与 Zhang et al. PR2019 的 CS/CCO 一致，保证公平对比。
+        """
+        init_mode = self.cfg['fitter'].get('gd_init', 'svd')
         points = np.asarray(target_points, dtype=np.float32)
+        lb = self.ctrl_lb.detach().cpu().numpy()
+        ub = self.ctrl_ub.detach().cpu().numpy()
+
+        if init_mode == 'random':
+            rng = np.random.default_rng(self.cfg.get('seeds', [42])[0])
+            grid = rng.uniform(lb, ub).astype(np.float32)
+            return grid
+
+        # SVD
         center = points.mean(axis=0)
         centered = points - center
         _, _, vh = np.linalg.svd(centered, full_matrices=False)
@@ -194,8 +248,6 @@ class Fitter:
             for j, v in enumerate(v_values):
                 grid[i, j] = center + u * axis_u + v * axis_v
 
-        lb = self.ctrl_lb.detach().cpu().numpy()
-        ub = self.ctrl_ub.detach().cpu().numpy()
         return np.clip(grid, lb, ub)
 
     def _target_points_for_instance(self):
@@ -221,6 +273,12 @@ class Fitter:
         return float(self.estimator.get_score())
 
     def optimize_instance(self):
+        """GD优化：NURBS曲面 或 圆柱模型"""
+        if self._model_type == 'cylinder':
+            return self._optimize_cylinder()
+        return self._optimize_nurbs()
+
+    def _optimize_nurbs(self):
         """对单张 NURBS 曲面执行梯度下降优化"""
         target_points_np = self._target_points_for_instance()
         target_points = torch.as_tensor(target_points_np, dtype=torch.float32, device=self.device)
@@ -324,6 +382,93 @@ class Fitter:
                     weights_eval = (self.weight_lb + (self.weight_ub - self.weight_lb) *
                                     torch.sigmoid(weights_raw)).detach().cpu().numpy()
                 score = self._evaluate_candidate(control_eval, weights_eval)
+                sub_record.update(score, self.estimator)
+                self.record.update(sub_record, 1)
+                best_score = max(best_score, score)
+                print(f"GD Step: {step}/{self.max_steps}, Loss: {loss.item():.6f}, Score: {score:.6f}",
+                      end="\r", flush=True)
+
+        return best_score
+
+    def _optimize_cylinder(self):
+        """GD优化圆柱（7维参数，全torch可导）"""
+        target_points_np = self._target_points_for_instance()
+        target_points = torch.as_tensor(target_points_np, dtype=torch.float32, device=self.device)
+        use_full_batch = self.data_batch_size <= 0 or target_points.shape[0] <= self.data_batch_size
+
+        # 初始化：action在[-1,1]^7 随机
+        init_mode = self.cfg['fitter'].get('gd_init', 'svd')
+        if init_mode == 'svd':
+            # 用数据PCA估计圆柱轴方向
+            pts = np.asarray(target_points_np, dtype=np.float32)
+            center = pts.mean(axis=0)
+            _, _, vh = np.linalg.svd(pts - center, full_matrices=False)
+            axis_dir = vh[2]  # 最小方差方向 = 圆柱轴
+            az = np.arctan2(axis_dir[1], axis_dir[0])
+            el = np.arcsin(np.clip(axis_dir[2], -1, 1))
+            r_est = float(np.mean(np.linalg.norm((pts - center) - np.outer((pts - center) @ axis_dir, axis_dir), axis=1)))
+            h_est = float(np.linalg.norm(pts.max(0) - pts.min(0)))
+            init_action = np.array([center[0], center[1], center[2], az, el, r_est, h_est], dtype=np.float32)
+            init_action = _inverse_rescale(init_action, self.rule.lb, self.rule.ub)
+        else:
+            init_action = np.random.default_rng(42).uniform(-1, 1, 7).astype(np.float32)
+
+        action = torch.nn.Parameter(torch.as_tensor(init_action, dtype=torch.float32, device=self.device))
+        optimizer = torch.optim.Adam([action], lr=self.lr)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=max(self.max_steps, 1), eta_min=self.lr * self.lr_min_factor)
+        sub_record = SubRecord(self.cfg, env_id=0)
+        sub_record.data_cloud = self.record.data_cloud
+        best_score = float("-inf")
+
+        for step in range(1, self.max_steps + 1):
+            optimizer.zero_grad(set_to_none=True)
+
+            if use_full_batch:
+                data_batch = target_points
+            else:
+                perm = torch.randperm(target_points.shape[0], device=self.device)[:self.data_batch_size]
+                data_batch = target_points[perm]
+
+            model_points, model_measure = self._cylinder_forward(action)
+
+            pairwise = torch.cdist(data_batch.unsqueeze(0), model_points.unsqueeze(0), p=2).squeeze(0)
+            data_to_model = pairwise.min(dim=1).values.mean()
+            model_to_data = pairwise.min(dim=0).values.mean()
+
+            soft_coverage = torch.tensor(0.0, device=self.device)
+            mm = torch.tensor(0.0, device=self.device)
+            if self.measure_weight > 0:
+                mm = model_measure / max(self.measure_scale, np.finfo(np.float32).eps)
+            elif self.coverage_weight > 0:
+                cov_th = self.coverage_threshold_factor * self.data_resolution
+                cov_t = max(self.coverage_temperature_factor * self.data_resolution, np.finfo(np.float32).eps)
+                soft_coverage = torch.sigmoid((cov_th - pairwise.min(dim=1).values) / cov_t).mean()
+
+            smoothness = torch.tensor(0.0, device=self.device)
+            bbox_penalty = (torch.relu(self.data_min - model_points) +
+                            torch.relu(model_points - self.data_max)).sum(dim=1).mean()
+            weight_reg = torch.tensor(0.0, device=self.device)
+
+            loss = (self.data_to_model_weight * data_to_model +
+                    self.model_to_data_weight * model_to_data -
+                    self.coverage_weight * soft_coverage -
+                    self.measure_weight * mm +
+                    self.smoothness_weight * smoothness +
+                    self.bbox_weight * bbox_penalty +
+                    self.weight_reg_weight * weight_reg)
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
+
+            if step % self.eval_interval == 0 or step == 1 or step == self.max_steps:
+                with torch.no_grad():
+                    act_np = action.detach().cpu().numpy()
+                self.estimator.reset()
+                self.estimator.current_dividing_level = -1
+                self.estimator.parse(action=act_np)
+                self.estimator.generate(current_dividing_level=-1)
+                score = float(self.estimator.get_score())
                 sub_record.update(score, self.estimator)
                 self.record.update(sub_record, 1)
                 best_score = max(best_score, score)
