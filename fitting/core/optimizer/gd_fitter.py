@@ -76,8 +76,9 @@ class Fitter:
         self.bbox_weight = float(fitter_cfg.get("gd_bbox_weight", 0.2))
         self.weight_reg_weight = float(fitter_cfg.get("gd_weight_reg_weight", 0.01))
         self.overlap_weight = float(fitter_cfg.get("gd_overlap_weight", 0.05))  # num_instances>1 时生效
-        self.overlap_margin_factor = float(fitter_cfg.get("gd_overlap_margin_factor", 2.0))  # × data_resolution
+        self.overlap_margin_factor = float(fitter_cfg.get("gd_overlap_margin_factor", 2.0))
         self.exclude_covered = bool(fitter_cfg.get("gd_exclude_covered", True))
+        self.huber_delta = float(fitter_cfg.get("gd_huber_delta", 0.0))  # 0=off, >0=Huber阈值(×data_resolution)
 
         # MM-aligned 模式：自动调整 loss 权重与 MM 评分一致
         #   - model_to_data 权重大于 data_to_model（MM 关注 model→data 误差）
@@ -137,9 +138,12 @@ class Fitter:
         self.data_max = torch.as_tensor(self.estimator.max_point, dtype=torch.float32, device=self.device)
         self.data_resolution = float(self.estimator.data_resolution)
 
-        # measure_scale 自动设为数据包围盒对角线平方（≈包围盒面积量级），若用户未显式设置
+        # measure_scale: 鲁棒百分位包围盒，抗离群点
         if float(fitter_cfg.get("gd_measure_scale", 0.0)) <= 0:
-            bbox_diag = float(torch.linalg.norm(self.data_max - self.data_min).item())
+            data = self.estimator.get_data()
+            lo = np.percentile(data, 5, axis=0)
+            hi = np.percentile(data, 95, axis=0)
+            bbox_diag = float(np.linalg.norm(hi - lo))
             self.measure_scale = max(bbox_diag * bbox_diag, self.data_resolution * self.data_resolution,
                                      np.finfo(np.float32).eps)
         else:
@@ -152,6 +156,14 @@ class Fitter:
         denominators = torch.einsum("ui,vj,ij->uv", self.basis_u, self.basis_v, weights)
         denominators = denominators.clamp_min(1e-8).unsqueeze(-1)
         return (numerators / denominators).reshape(-1, self.dimension)
+
+    def _huber_mean(self, distances):
+        """鲁棒均值：Huber loss 截断大误差，抗离群点。"""
+        if self.huber_delta <= 0:
+            return distances.mean()
+        delta = self.huber_delta * self.data_resolution
+        d = distances
+        return torch.where(d < delta, 0.5 * d ** 2, delta * (d - 0.5 * delta)).mean()
 
     def _cylinder_forward(self, action):
         """圆柱可微前向：action(7,) → (points, measure)。全 torch 可导。"""
@@ -174,12 +186,12 @@ class Fitter:
         ref = torch.tensor([0., 0., 1.], device=self.device)
         if torch.abs(axis[2]) > 0.9:
             ref = torch.tensor([1., 0., 0.], device=self.device)
-        u_dir = torch.cross(axis, ref)
+        u_dir = torch.linalg.cross(axis, ref)
         u_dir = u_dir / (u_dir.norm() + 1e-8)
-        v_dir = torch.cross(axis, u_dir)
+        v_dir = torch.linalg.cross(axis, u_dir)
 
-        # 采样网格
-        su, sv = 40, 20
+        # 采样网格（加密，保证 Chamfer 匹配精度）
+        su, sv = 80, 40
         u = torch.linspace(0, 2 * torch.pi, su, device=self.device)
         v = torch.linspace(0, h, sv, device=self.device)
         uu, vv = torch.meshgrid(u, v, indexing='ij')
@@ -326,8 +338,8 @@ class Fitter:
             pairwise = torch.cdist(data_batch.unsqueeze(0), model_points.unsqueeze(0), p=2).squeeze(0)
             data_to_model_min = pairwise.min(dim=1).values  # 每个数据点到曲面的最近距离
             model_to_data_min = pairwise.min(dim=0).values  # 每个曲面点到数据的最近距离
-            data_to_model = data_to_model_min.mean()
-            model_to_data = model_to_data_min.mean()
+            data_to_model = self._huber_mean(data_to_model_min)
+            model_to_data = self._huber_mean(model_to_data_min)
 
             # 覆盖率奖励（coverage）或 Mean Measure 几何测度（measure）
             soft_coverage = torch.tensor(0.0, device=self.device)
@@ -396,18 +408,23 @@ class Fitter:
         target_points = torch.as_tensor(target_points_np, dtype=torch.float32, device=self.device)
         use_full_batch = self.data_batch_size <= 0 or target_points.shape[0] <= self.data_batch_size
 
-        # 初始化：action在[-1,1]^7 随机
+        # 初始化
         init_mode = self.cfg['fitter'].get('gd_init', 'svd')
         if init_mode == 'svd':
-            # 用数据PCA估计圆柱轴方向
-            pts = np.asarray(target_points_np, dtype=np.float32)
+            pts_all = np.asarray(target_points_np, dtype=np.float32)
+            # 鲁棒过滤：去掉离群点后做PCA（5%-95%分位数框内）
+            lo = np.percentile(pts_all, 5, axis=0)
+            hi = np.percentile(pts_all, 95, axis=0)
+            inlier = np.all((pts_all >= lo) & (pts_all <= hi), axis=1)
+            pts = pts_all[inlier] if inlier.sum() > 100 else pts_all
             center = pts.mean(axis=0)
             _, _, vh = np.linalg.svd(pts - center, full_matrices=False)
-            axis_dir = vh[2]  # 最小方差方向 = 圆柱轴
+            axis_dir = vh[2]
             az = np.arctan2(axis_dir[1], axis_dir[0])
             el = np.arcsin(np.clip(axis_dir[2], -1, 1))
-            r_est = float(np.mean(np.linalg.norm((pts - center) - np.outer((pts - center) @ axis_dir, axis_dir), axis=1)))
-            h_est = float(np.linalg.norm(pts.max(0) - pts.min(0)))
+            r_est = float(np.mean(np.linalg.norm(
+                (pts - center) - np.outer((pts - center) @ axis_dir, axis_dir), axis=1)))
+            h_est = float(np.linalg.norm(hi - lo))  # 用鲁棒跨度
             init_action = np.array([center[0], center[1], center[2], az, el, r_est, h_est], dtype=np.float32)
             init_action = _inverse_rescale(init_action, self.rule.lb, self.rule.ub)
         else:
@@ -433,8 +450,8 @@ class Fitter:
             model_points, model_measure = self._cylinder_forward(action)
 
             pairwise = torch.cdist(data_batch.unsqueeze(0), model_points.unsqueeze(0), p=2).squeeze(0)
-            data_to_model = pairwise.min(dim=1).values.mean()
-            model_to_data = pairwise.min(dim=0).values.mean()
+            data_to_model = self._huber_mean(pairwise.min(dim=1).values)
+            model_to_data = self._huber_mean(pairwise.min(dim=0).values)
 
             soft_coverage = torch.tensor(0.0, device=self.device)
             mm = torch.tensor(0.0, device=self.device)
@@ -463,7 +480,7 @@ class Fitter:
 
             if step % self.eval_interval == 0 or step == 1 or step == self.max_steps:
                 with torch.no_grad():
-                    act_np = action.detach().cpu().numpy()
+                    act_np = np.clip(action.detach().cpu().numpy(), -1.0, 1.0)
                 self.estimator.reset()
                 self.estimator.current_dividing_level = -1
                 self.estimator.parse(action=act_np)

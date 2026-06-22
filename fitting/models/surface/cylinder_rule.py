@@ -73,25 +73,22 @@ class CylinderRule(ModelRule):
         self.set_trait_range()
 
     def set_trait_range(self):
-        min_point = self.estimator.min_point
-        max_point = self.estimator.max_point
-        extent = max_point - min_point
+        # 鲁棒包围盒：5%/95%分位数，抗离群点
+        data = self.estimator.get_data()
+        lo = np.percentile(data, 5, axis=0)
+        hi = np.percentile(data, 95, axis=0)
+        extent = hi - lo
         padding = 0.25 * np.maximum(extent, self.estimator.resolution)
 
         lb_arr = np.zeros(7, dtype=np.float32)
         ub_arr = np.zeros(7, dtype=np.float32)
 
-        # x0, y0, z0: 底面中心位置
-        lb_arr[0:3] = min_point - padding
-        ub_arr[0:3] = max_point + padding
-        # azimuth: [0, 2π)
+        lb_arr[0:3] = lo - padding
+        ub_arr[0:3] = hi + padding
         lb_arr[3], ub_arr[3] = 0.0, 2.0 * np.pi
-        # elevation: [-π/2, π/2]
         lb_arr[4], ub_arr[4] = -np.pi / 2, np.pi / 2
-        # radius
-        lb_arr[5], ub_arr[5] = 0.02, np.linalg.norm(extent)
-        # length
-        lb_arr[6], ub_arr[6] = 0.02, 2.0 * np.linalg.norm(extent)
+        lb_arr[5], ub_arr[5] = 0.02, float(np.linalg.norm(extent))
+        lb_arr[6], ub_arr[6] = 0.02, 2.0 * float(np.linalg.norm(extent))
 
         self.lb = lb_arr
         self.ub = ub_arr

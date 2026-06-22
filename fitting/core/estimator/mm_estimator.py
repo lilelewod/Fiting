@@ -186,9 +186,9 @@ class MeanMeasureEstimator:
 
     # ---- scoring (Mean Measure, Zhang et al. PR 2019) ----
     def estimate(self):
-        """MM = |M̃|^λ / (d(M,D) / δ)
+        """MM = |M|^λ / (d(M,D) / δ)
 
-        |M̃| = |M| / S  归一化测度（S = 数据包围盒对角线²）
+        |M|: 模型几何测度
         d(M,D): 模型→数据平均距离
         δ: 数据分辨率
         """
@@ -201,16 +201,28 @@ class MeanMeasureEstimator:
         if np.isclose(error, 0.0):
             error = np.finfo(np.float32).eps
 
-        # 测度归一化：消除膨胀曲面的虚高 score
-        bbox_extent = self.max_point - self.min_point
-        data_scale = float(np.linalg.norm(bbox_extent))
-        measure_norm = max(data_scale * data_scale,
-                           self.data_resolution * self.data_resolution,
-                           np.finfo(np.float32).eps)
-        normalized_measure = self.measure / measure_norm
-
         normalized_error = error / self.data_resolution
-        self.score_mm = (normalized_measure ** self.regularization_factor) / normalized_error
+        self.score_mm = (max(float(self.measure), 1e-8) ** self.regularization_factor) / normalized_error
+
+        # 包围盒惩罚：膨胀曲面扣分（鲁棒分位数）
+        bbox_factor = self.cfg["estimator"].get("mm_bbox_penalty_factor", 1.0)
+        if bbox_factor > 0:
+            data = self.get_data()
+            lo = np.percentile(data, 5, axis=0)
+            hi = np.percentile(data, 95, axis=0)
+            margin = 0.2 * np.linalg.norm(hi - lo)
+            lo = lo - margin
+            hi = hi + margin
+            # 用模型采样点估算越界比例（没有存采样点，用支持点近似）
+            if self.supporters.size > 0:
+                supporter_pts = data[self.supporters]
+                below = np.any(supporter_pts < lo, axis=1)
+                above = np.any(supporter_pts > hi, axis=1)
+                out_ratio = float(np.mean(below | above))
+                if out_ratio > 0:
+                    penalty = max(0.0, 1.0 - out_ratio) ** bbox_factor
+                    self.score_mm *= penalty
+
         self.score = self.score_mm
         return self.score
 
