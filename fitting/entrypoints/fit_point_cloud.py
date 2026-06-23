@@ -52,6 +52,10 @@ def run_experiment(cfg):
         from core.optimizer.cs_fitter import Fitter
     elif algo == 'ala':
         from core.optimizer.ala_fitter import Fitter
+    elif algo == 'spsa':
+        from core.optimizer.spsa_fitter import Fitter
+    elif algo == 'memetic':
+        from core.optimizer.memetic_fitter import Fitter
     else:
         raise ValueError(f"Unknown algorithm: {algo}")
 
@@ -85,7 +89,7 @@ def prepare_3d_cfg(base_cfg):
 
     cfg['estimator']['data_file'] = data_file
     cfg['record']['root_dir'] = (
-        f"./outputs/{algo}/3d/{model_type}/{data_path.parent.name}/{data_path.stem}/run_{run_id}/"
+        f"{PROJECT_ROOT.parent}/outputs/{algo}/3d/{model_type}/{data_path.parent.name}/{data_path.stem}/run_{run_id}/"
     )
     cfg['estimator']['rule_class'] = get_rule_class(cfg)
     cfg['estimator']['estimator_class'] = get_estimator_class(cfg)
@@ -97,7 +101,7 @@ def prepare_3d_cfg(base_cfg):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='configs/fit_mm_compare.yaml')
-    parser.add_argument('--algo', type=str, default=None, choices=['cco', 'gd', 'cs', 'ala'])
+    parser.add_argument('--algo', type=str, default=None, choices=['cco', 'gd', 'cs', 'ala', 'spsa', 'memetic'])
     parser.add_argument('--estimator', type=str, default=None, choices=['npre', 'gd', 'mm'])
     parser.add_argument('--model', type=str, default=None, choices=['curve', 'surface', 'nurbs_surface'])
     parser.add_argument('--data-file', type=str, default=None)
@@ -108,7 +112,7 @@ def main():
     parser.add_argument('--data-resolution', type=float, default=None)
     parser.add_argument('--model-resolution', type=float, default=None)
     parser.add_argument('--visualization', type=str, default=None, choices=['parallel', 'non-parallel', 'none'])
-    parser.add_argument('--runs', type=int, default=1)
+    parser.add_argument('--runs', type=int, default=10)
     args = parser.parse_args()
 
     with open(args.config, 'r', encoding='utf-8') as f:

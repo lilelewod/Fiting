@@ -279,6 +279,7 @@ class Fitter:
                     BestX = PopPos[i, :].copy()
 
         # 循环结束，返回找到的最优得分
+        self.best_action_ = BestX.copy()  # 供GD warm-start获取
         return BestF
 
     def fit(self):

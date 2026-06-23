@@ -87,8 +87,11 @@ class CylinderRule(ModelRule):
         ub_arr[0:3] = hi + padding
         lb_arr[3], ub_arr[3] = 0.0, 2.0 * np.pi
         lb_arr[4], ub_arr[4] = -np.pi / 2, np.pi / 2
-        lb_arr[5], ub_arr[5] = 0.02, float(np.linalg.norm(extent))
-        lb_arr[6], ub_arr[6] = 0.02, 2.0 * float(np.linalg.norm(extent))
+        # 紧bounds: r ≤ min(水平范围)/2, h ≤ 垂直范围
+        lb_arr[5] = 0.02
+        ub_arr[5] = 0.6 * max(extent[0], extent[1])
+        lb_arr[6] = 0.02
+        ub_arr[6] = 1.5 * extent[2]
 
         self.lb = lb_arr
         self.ub = ub_arr

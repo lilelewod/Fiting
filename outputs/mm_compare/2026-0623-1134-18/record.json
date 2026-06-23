@@ -1,0 +1,131 @@
+{
+  "cfg": {
+    "task_type": "3d",
+    "run_id": 1,
+    "data_file": "/home/m25lll/code/Fiting/fitting/datasets/synthetic/cylinder_4k.ply",
+    "model": {
+      "type": "cylinder",
+      "num_ctrl_u": 6,
+      "num_ctrl_v": 6,
+      "degree_u": 3,
+      "degree_v": 3,
+      "sample_u": 60,
+      "sample_v": 60,
+      "weight_lb": 0.8,
+      "weight_ub": 1.2
+    },
+    "device": "<not serializable>",
+    "seeds": [
+      237,
+      97293,
+      98033,
+      87342,
+      40490
+    ],
+    "estimator": {
+      "type": "mm",
+      "data_resolution": 0.01,
+      "model_resolution": 0.004,
+      "regularization_factor": 1.2,
+      "incremental_coverage": true,
+      "outlier_distance_factor": 2.5,
+      "outlier_penalty_factor": 0.0,
+      "bbox_margin_factor": 1.0,
+      "bbox_penalty_factor": 0.0,
+      "overlap_penalty_factor": 0.0,
+      "control_smoothness_penalty_factor": 0.0,
+      "mm_bbox_penalty_factor": 0.0,
+      "early_rejection": true,
+      "use_faiss": true,
+      "data_file": "/home/m25lll/code/Fiting/fitting/datasets/synthetic/cylinder_4k.ply",
+      "rule_class": "<from models.surface.cylinder_rule import CylinderRule>",
+      "estimator_class": "<from core.estimator.mm_estimator import MeanMeasureEstimator>",
+      "estimator_instance": null,
+      "load_data_fn": "<from tools.data_tool import load_ply_data>"
+    },
+    "fitter": {
+      "algo_name": "cs",
+      "num_instances": 1,
+      "max_episode": 3000,
+      "gd_lr": 0.01,
+      "gd_lr_min_factor": 0.1,
+      "gd_eval_interval": 200,
+      "gd_data_batch_size": 0,
+      "gd_init": "svd",
+      "gd_smoothness_weight": 0.05,
+      "gd_patience": 15,
+      "gd_num_restarts": 20,
+      "gd_restart_noise": 0.3,
+      "gd_param_noise_std": 0.02,
+      "gd_tau_schedule": "plateau",
+      "gd_two_phase": true,
+      "gd_lr_restarts": 3,
+      "num_envs": 4,
+      "episodes_per_env": 50,
+      "cs_warm_start_action": [
+        -0.5925519466400146,
+        -0.27464741468429565,
+        -0.03022521734237671,
+        -0.8607850074768066,
+        0.024088263511657715,
+        0.3752214014530182,
+        0.4559396505355835
+      ],
+      "cs_warm_start_noise": 0.1
+    },
+    "record": {
+      "root_dir": "/home/m25lll/code/Fiting/outputs/mm_compare/",
+      "pulse_size": 2000,
+      "verbose": true,
+      "trim_final_mesh": true
+    },
+    "raw_seeds": null,
+    "raw_device": {
+      "train_device": "cuda:1",
+      "cuda_deterministic": true
+    }
+  },
+  "dimension": 3,
+  "lower_bound": null,
+  "upper_bound": null,
+  "log_dir": "/home/m25lll/code/Fiting/outputs/mm_compare//2026-0623-1134-18/",
+  "out_json_file_name": "/home/m25lll/code/Fiting/outputs/mm_compare//2026-0623-1134-18/record.json",
+  "timestamp": "2026-0623-1134-18",
+  "name": -1,
+  "verbose": true,
+  "clock": "<not serializable>",
+  "start_time": 1782185658.0897944,
+  "plotter": null,
+  "pulse_size": 2000,
+  "update_count": 2,
+  "episode": 100,
+  "total_episode": 100,
+  "token_index": 0,
+  "data_cloud": "<not serializable>",
+  "best_score": 0.8473295721462123,
+  "best_cloud": "<not serializable>",
+  "best_estimator": "<not serializable>",
+  "best_token_set": [
+    "<not serializable>"
+  ],
+  "best_color": "<not serializable>",
+  "best_sub_record": 1,
+  "evolving_scores": [
+    0.8458292656472678,
+    0.8473295721462123
+  ],
+  "evolving_episodes": [
+    8,
+    52
+  ],
+  "evolving_times": [
+    0.06315469741821289,
+    0.06771659851074219
+  ],
+  "evolving_actions": [],
+  "evolving_traits": [],
+  "evolutions": "see the files named evolution_round_{}_of_instance_{}.json",
+  "base_cloud": "<not serializable>",
+  "base_color": "<not serializable>",
+  "round": 0
+}

@@ -25,7 +25,7 @@ rule:
 
 # ===== 评估器设置 =====
 estimator:
-  type: 'npre'                #mm ,npre
+  type: 'mm'                #mm ,npre
   early_rejection: false
   regularization_factor: 1
   device: null
@@ -35,11 +35,11 @@ estimator:
 
 # ===== 核心寻优算法设置 =====
 fitter:
-  algo_name: 'CCO'          # 一键切换: cco,cs,ala
+  algo_name: 'memetic'
   num_instances: 1          # 要拟合多少个实例 (比如笔画数)
   num_envs: 8              # 并行环境数量
   episodes_per_env: 10     # 每个环境评估的个体数 (总种群 = 5*5 = 25)
-  max_episode: 100000       # 最大评估次数
+  max_episode: 50000
 
 # ===== 采集器设置 =====
 collector:
@@ -54,6 +54,6 @@ collector:
 # ===== 日志与可视化 =====
 record:
   pulse_size: 1000
-  visualization: 'parallel'
+  visualization: null
   use_thread_time: false
   rotate: true

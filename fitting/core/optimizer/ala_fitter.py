@@ -149,6 +149,7 @@ class Fitter:
             info = (f'ALA Evaluations: {evaluations}/{max_evaluations}, Best Score: {Score:.4f}')
             print(info, end="\r", flush=True)
 
+        self.best_action_ = Position.copy()  # 供GD warm-start获取
         return Score
 
     def fit(self):

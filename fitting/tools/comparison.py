@@ -5,7 +5,7 @@ import json
 from glob import glob
 
 
-max_episode=int(1e5)
+max_episode = 30000
 
 
 def load_record(record_file, scores_list, episodes_list):
@@ -81,8 +81,9 @@ fig = plt.figure(figsize=(20, 10))
 # draw('/mnt/robustlearning/fitting/outputs/ppo/saltpepper_noise/0.6/1/noisy_1/2025-1109/*/*.json', 2, 'PPO')
 # draw('/mnt/robustlearning/fitting/outputs/cuckoo/saltpepper_noise/0.6/1/noisy_1/2025-1109/*/*.json', 1, 'CS')
 
-draw('/mnt/robustlearning/fitting/outputs/ppo/saltpepper_noise/0.6/3/noisy_1/2025-1220/*/*.json', 2, 'PPO')
-draw('/mnt/robustlearning/fitting/outputs/cuckoo/saltpepper_noise/0.6/3/noisy_1/2026-0129/*/*.json', 1, 'CS')
+OUT = '/home/m25lll/code/Fiting/outputs'
+draw(f'{OUT}/cs/3d/cylinder/synthetic/cylinder_4k/run_1/2026-0623/160*/record.json', 1, 'CS')
+draw(f'{OUT}/memetic/3d/cylinder/synthetic/cylinder_4k/run_1/2026-0623/15[3-5]*/record.json', 2, 'Memetic')
 
 plt.xticks(fontsize=22)
 plt.yticks(fontsize=22)
@@ -90,5 +91,5 @@ plt.xlabel('Number of fitness evaluations', fontsize=32)
 plt.ylabel('Fitness', fontsize=32)
 plt.legend(loc='lower right', prop=font1)
 # plt.title("instance", fontsize=34)
-fig.savefig('comparison.pdf')
+fig.savefig('/home/m25lll/code/Fiting/outputs/cylinder_clean_convergence.pdf')
 plt.show()

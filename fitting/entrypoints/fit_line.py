@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     base_cfg['estimator']['data_file'] = data_file
     data_name = data_file.split('/')[-1].split('.')[0]
-    base_cfg['record']['root_dir'] = f"./outputs/{algo}/line/{data_name}/run_{run_id}/"
+    base_cfg['record']['root_dir'] = f"/home/m25lll/code/Fiting/outputs/{algo}/line/{data_name}/run_{run_id}/"
 
     base_cfg['estimator']['rule_class'] = Rule
 

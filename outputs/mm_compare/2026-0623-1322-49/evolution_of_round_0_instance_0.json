@@ -1,0 +1,92 @@
+[
+  {
+    "episode": 1,
+    "elpased_time": 0.13875365257263184,
+    "score": 0.3544719093839883,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 3,
+    "elpased_time": 0.9709019660949707,
+    "score": 1.0610322348029988,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 5,
+    "elpased_time": 1.8077592849731445,
+    "score": 1.1716111457935074,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 7,
+    "elpased_time": 2.643012762069702,
+    "score": 1.1819382470898243,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 9,
+    "elpased_time": 3.48014497756958,
+    "score": 1.1842222719471545,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 11,
+    "elpased_time": 4.315909147262573,
+    "score": 1.185758346797534,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 17,
+    "elpased_time": 6.804580450057983,
+    "score": 1.1872819927092322,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 21,
+    "elpased_time": 8.469184398651123,
+    "score": 1.187583659728777,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 25,
+    "elpased_time": 10.13520336151123,
+    "score": 1.189016645778503,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 31,
+    "elpased_time": 12.626433610916138,
+    "score": 1.1897517353429787,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  }
+]

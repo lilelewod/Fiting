@@ -88,91 +88,56 @@ class Fitter:
                 assert False
         return scores
 
+    def _get_best_nest(self, nest, new_nest, fitness):
+        """张老师原版 get_best_nest: 评估+贪心选择"""
+        scores = self.estimate(solutions=new_nest)
+        mask = scores >= fitness
+        fitness[mask] = scores[mask]
+        nest[mask, :] = new_nest[mask, :]
+        max_index = np.argmax(fitness)
+        return fitness[max_index], nest[max_index, :], nest, fitness
+
     def optimize_instance(self):
+        """张老师原版 CS: initialize → cuckoo → empty_nests 循环"""
         dim = self.action_dim
-        lower_bound = np.full(dim, -1.)
-        upper_bound = np.full(dim, 1.)
+        lb = np.full(dim, -1.)
+        ub = np.full(dim, 1.)
         n = self.population_size
         pa = 0.25
 
-        nest = np.zeros((n, dim), dtype=np.float32)
-        for i in range(n):
-            nest[i, :] = lower_bound + (upper_bound - lower_bound) * np.random.random_sample(dim)
+        # initialize — 支持 warm-start: 从给定 action 邻域初始化种群
+        warm_action = self.cfg['fitter'].get('cs_warm_start_action', None)
+        warm_noise = float(self.cfg['fitter'].get('cs_warm_start_noise', 0.05))
 
-        max_iteration = self.cfg['fitter']['max_episode']
-        iteration = 0
-        
-        # 初始化当前种群的得分
+        nest = np.zeros((n, dim), dtype=np.float32)
+        if warm_action is not None:
+            warm_action = np.asarray(warm_action, dtype=np.float32)
+            for i in range(n):
+                nest[i, :] = np.clip(warm_action + warm_noise * np.random.randn(dim), -1.0, 1.0)
+            print(f'[CS] warm-start from action (noise={warm_noise}), norm={np.linalg.norm(warm_action):.3f}')
+        else:
+            for i in range(n):
+                nest[i, :] = lb + (ub - lb) * np.random.random_sample(dim)
         fitness = self.estimate(solutions=nest)
-        iteration += n
 
-        while iteration < max_iteration:
-            # 获取当前最优
+        best_score = 0.
+        best_action = nest[np.argmax(fitness), :].copy()  # 初始最优
+        max_estimations = self.cfg['fitter']['max_episode']
+        estimations = n
+
+        while estimations < max_estimations:
             best_nest = nest[np.argmax(fitness), :]
+            new_nest = get_cuckoos(nest, best_nest, lb, ub)
+            f_new, best_nest, nest, fitness = self._get_best_nest(nest, new_nest, fitness)
+            new_nest = empty_nests(nest, lb, ub, pa)
+            f_new, best_nest, nest, fitness = self._get_best_nest(nest, new_nest, fitness)
+            estimations += 2 * n
+            if f_new > best_score:
+                best_score = f_new
+                best_action = best_nest.copy()  # 持久化最优nest
 
-            # --- 第一阶段：莱维飞行 ---
-            new_nest = get_cuckoos(nest, best_nest, lower_bound, upper_bound)
-            new_scores = self.estimate(solutions=new_nest)
-            # 贪心选择：只保留更好的解
-            mask = new_scores >= fitness
-            fitness[mask] = new_scores[mask]
-            nest[mask, :] = new_nest[mask, :]
-            iteration += n
-
-            if iteration >= max_iteration:
-                break
-
-            # 重新获取当前最优 (因为上一步可能更新了)
-            best_nest = nest[np.argmax(fitness), :]
-
-            # --- 第二阶段：发现并丢弃外来蛋 ---
-            new_nest = empty_nests(nest, lower_bound, upper_bound, pa)
-            new_scores = self.estimate(solutions=new_nest)
-            # 再次贪心选择：只保留更好的解
-            mask = new_scores >= fitness
-            fitness[mask] = new_scores[mask]
-            nest[mask, :] = new_nest[mask, :]
-            iteration += n
-
-            info = (f'CS Evaluations: {iteration}/{max_iteration}, Best Score: {np.max(fitness):.4f}')
-            print(info, end="\r", flush=True)
-
-        return np.max(fitness)
-        dim = self.action_dim
-        lower_bound = np.full(dim, -1.)
-        upper_bound = np.full(dim, 1.)
-        n = self.population_size
-        pa = 0.25
-
-        nest = np.zeros((n, dim), dtype=np.float32)
-        for i in range(n):
-            nest[i, :] = lower_bound + (upper_bound - lower_bound) * np.random.random_sample(dim)
-
-        max_iteration = self.cfg['fitter']['max_episode']
-        iteration = 0
-
-        while iteration < max_iteration:
-            # 1. 评估当前巢穴
-            scores = self.estimate(solutions=nest)
-            iteration += n
-
-            # 2. 贪心获取最优
-            best_nest = nest[np.argmax(scores), :]
-
-            # 3. 莱维飞行 (获取新巢穴)
-            nest = get_cuckoos(nest, best_nest, lower_bound, upper_bound)
-
-            # 4. 评估新巢穴
-            scores = self.estimate(solutions=nest)
-
-            # 5. 发现并丢弃外来蛋 (概率 p_a)
-            nest = empty_nests(nest, lower_bound, upper_bound, pa)
-            iteration += n
-
-            info = (f'CS Evaluations: {iteration}/{max_iteration}, Best Score: {np.max(scores):.4f}')
-            print(info, end="\r", flush=True)
-
-        return np.max(scores)
+        self.best_action_ = best_action  # 供GD warm-start获取
+        return best_score
 
     def fit(self):
         for i in range(self.cfg['fitter']['num_instances']):

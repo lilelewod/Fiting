@@ -1,0 +1,461 @@
+[
+  {
+    "episode": 1,
+    "elpased_time": 0.12625718116760254,
+    "score": 2.851556685709627,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 3,
+    "elpased_time": 1.0506196022033691,
+    "score": 3.201865647144104,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 5,
+    "elpased_time": 1.9660181999206543,
+    "score": 3.367558943483642,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 7,
+    "elpased_time": 2.899397134780884,
+    "score": 3.462983671488251,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 9,
+    "elpased_time": 3.818974256515503,
+    "score": 3.5280345736430077,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 11,
+    "elpased_time": 4.760008335113525,
+    "score": 3.577456497570387,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 13,
+    "elpased_time": 5.686607837677002,
+    "score": 3.6142357263165374,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 15,
+    "elpased_time": 6.612514972686768,
+    "score": 3.645974183371287,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 17,
+    "elpased_time": 7.558175086975098,
+    "score": 3.6695431642681156,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 19,
+    "elpased_time": 8.505512952804565,
+    "score": 3.689653690872167,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 21,
+    "elpased_time": 9.433482646942139,
+    "score": 3.7091226798956143,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 23,
+    "elpased_time": 10.365458965301514,
+    "score": 3.7247767377898517,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 25,
+    "elpased_time": 11.228492259979248,
+    "score": 3.7378970962859652,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 27,
+    "elpased_time": 12.095058679580688,
+    "score": 3.748668287897648,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 29,
+    "elpased_time": 12.958261251449585,
+    "score": 3.758919271558415,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 31,
+    "elpased_time": 13.8183753490448,
+    "score": 3.7705417707938875,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 33,
+    "elpased_time": 14.680107116699219,
+    "score": 3.7798816605161147,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 35,
+    "elpased_time": 15.538917541503906,
+    "score": 3.788445145834812,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 37,
+    "elpased_time": 16.40199375152588,
+    "score": 3.7973246309749857,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 39,
+    "elpased_time": 17.26793646812439,
+    "score": 3.8058000497428304,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 41,
+    "elpased_time": 18.13115620613098,
+    "score": 3.8142794821647517,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 43,
+    "elpased_time": 18.994190216064453,
+    "score": 3.8224092582382885,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 45,
+    "elpased_time": 19.853177070617676,
+    "score": 3.829690669314984,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 47,
+    "elpased_time": 20.714290142059326,
+    "score": 3.8363370040410594,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 49,
+    "elpased_time": 21.577466249465942,
+    "score": 3.8393368771474528,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 51,
+    "elpased_time": 22.44387984275818,
+    "score": 3.842144229069459,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 53,
+    "elpased_time": 23.30555033683777,
+    "score": 3.8445768065227135,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 55,
+    "elpased_time": 24.164799213409424,
+    "score": 3.846706748213371,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 57,
+    "elpased_time": 25.033207893371582,
+    "score": 3.848599429157965,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 59,
+    "elpased_time": 25.892240285873413,
+    "score": 3.8503149129593175,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 61,
+    "elpased_time": 26.75407314300537,
+    "score": 3.8520896305030536,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 63,
+    "elpased_time": 27.61900019645691,
+    "score": 3.8534218564262184,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 65,
+    "elpased_time": 28.477463006973267,
+    "score": 3.8548516506434187,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 67,
+    "elpased_time": 29.338029384613037,
+    "score": 3.8561948795005563,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 69,
+    "elpased_time": 30.19688391685486,
+    "score": 3.8581537376358783,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 71,
+    "elpased_time": 31.05855965614319,
+    "score": 3.8604474208044253,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 73,
+    "elpased_time": 31.92742347717285,
+    "score": 3.8619910894089817,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 75,
+    "elpased_time": 32.78831148147583,
+    "score": 3.8627920473700157,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 77,
+    "elpased_time": 33.67968416213989,
+    "score": 3.863481657603686,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 79,
+    "elpased_time": 34.60350680351257,
+    "score": 3.863977552158973,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 81,
+    "elpased_time": 35.53045105934143,
+    "score": 3.864491594630748,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 83,
+    "elpased_time": 36.48381781578064,
+    "score": 3.864874089639881,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 85,
+    "elpased_time": 37.408971548080444,
+    "score": 3.8652013746273424,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 87,
+    "elpased_time": 38.275980949401855,
+    "score": 3.8654674452248794,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 89,
+    "elpased_time": 39.1335813999176,
+    "score": 3.8658054385410696,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 91,
+    "elpased_time": 39.99418354034424,
+    "score": 3.866009502665922,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 93,
+    "elpased_time": 40.851802110672,
+    "score": 3.866255939832146,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 95,
+    "elpased_time": 41.714216232299805,
+    "score": 3.8665277990829683,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 97,
+    "elpased_time": 42.57412362098694,
+    "score": 3.8667138788556294,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 99,
+    "elpased_time": 43.43092942237854,
+    "score": 3.8669250811307108,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 101,
+    "elpased_time": 44.29123568534851,
+    "score": 3.8671113375774975,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  }
+]

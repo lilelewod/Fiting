@@ -1,4 +1,5 @@
 from copy import deepcopy
+import time
 
 import numpy as np
 from sklearn.neighbors import KDTree
@@ -15,6 +16,11 @@ try:
     import open3d as o3d
 except ModuleNotFoundError:
     o3d = None
+
+try:
+    import faiss
+except ModuleNotFoundError:
+    faiss = None
 
 
 class MeanMeasureEstimator:
@@ -61,6 +67,11 @@ class MeanMeasureEstimator:
         self.single_model_error = None
         self.score = None
         self.score_mm = 0.0
+
+        # FAISS GPU 加速
+        self._use_faiss = faiss is not None and cfg['estimator'].get('use_faiss', False)
+        self._faiss_index = None
+        self._last_model_to_data_time = 0.0
         self.token = None
         self.model_color = None
 
@@ -188,9 +199,7 @@ class MeanMeasureEstimator:
     def estimate(self):
         """MM = |M|^λ / (d(M,D) / δ)
 
-        |M|: 模型几何测度
-        d(M,D): 模型→数据平均距离
-        δ: 数据分辨率
+        与张老师 estimator.py 完全一致。
         """
         if self.data_kDTree is None or self.num_points == 0:
             self.score_mm = 0.0
@@ -202,38 +211,35 @@ class MeanMeasureEstimator:
             error = np.finfo(np.float32).eps
 
         normalized_error = error / self.data_resolution
-        self.score_mm = (max(float(self.measure), 1e-8) ** self.regularization_factor) / normalized_error
-
-        # 包围盒惩罚：膨胀曲面扣分（鲁棒分位数）
-        bbox_factor = self.cfg["estimator"].get("mm_bbox_penalty_factor", 1.0)
-        if bbox_factor > 0:
-            data = self.get_data()
-            lo = np.percentile(data, 5, axis=0)
-            hi = np.percentile(data, 95, axis=0)
-            margin = 0.2 * np.linalg.norm(hi - lo)
-            lo = lo - margin
-            hi = hi + margin
-            # 用模型采样点估算越界比例（没有存采样点，用支持点近似）
-            if self.supporters.size > 0:
-                supporter_pts = data[self.supporters]
-                below = np.any(supporter_pts < lo, axis=1)
-                above = np.any(supporter_pts > hi, axis=1)
-                out_ratio = float(np.mean(below | above))
-                if out_ratio > 0:
-                    penalty = max(0.0, 1.0 - out_ratio) ** bbox_factor
-                    self.score_mm *= penalty
-
+        self.score_mm = (self.measure ** self.regularization_factor) / normalized_error
         self.score = self.score_mm
         return self.score
 
     # ---- model-to-data error ----
+    def _build_faiss_index(self):
+        if self._faiss_index is not None:
+            return
+        data = np.ascontiguousarray(self.data, dtype=np.float32)
+        self._faiss_index = faiss.IndexFlatL2(data.shape[1])
+        self._faiss_index.add(data)
+
     def compute_model_to_data_error(self, points):
         if self.data_kDTree is None:
             print("no data")
             return np.inf, np.empty(0, dtype=np.int64)
 
-        errors, indexes = self.data_kDTree.query(points)
-        sum_errors = float(np.sum(errors))
+        t0 = time.perf_counter()
+        if self._use_faiss and points.shape[0] >= 32:
+            self._build_faiss_index()
+            points_f32 = np.ascontiguousarray(points, dtype=np.float32)
+            distances_sq, idx = self._faiss_index.search(points_f32, 1)
+            errors = np.sqrt(np.maximum(distances_sq[:, 0], 0.0))
+            indexes = np.asarray(idx, dtype=np.int64)
+            sum_errors = float(np.sum(errors))
+        else:
+            errors, indexes = self.data_kDTree.query(points)
+            sum_errors = float(np.sum(errors))
+        self._last_model_to_data_time = time.perf_counter() - t0
         new_supporters = indexes[:, 0]
         outlier_distance_factor = float(
             self.cfg["estimator"].get("outlier_distance_factor", 0.0)

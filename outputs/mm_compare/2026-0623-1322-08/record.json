@@ -1,0 +1,132 @@
+{
+  "cfg": {
+    "task_type": "3d",
+    "run_id": 1,
+    "data_file": "/home/m25lll/code/Fiting/fitting/datasets/synthetic/saddle_3k.ply",
+    "model": {
+      "type": "nurbs_surface",
+      "num_ctrl_u": 6,
+      "num_ctrl_v": 6,
+      "degree_u": 3,
+      "degree_v": 3,
+      "sample_u": 60,
+      "sample_v": 60,
+      "weight_lb": 0.8,
+      "weight_ub": 1.2
+    },
+    "device": "<not serializable>",
+    "seeds": [
+      37929
+    ],
+    "estimator": {
+      "type": "mm",
+      "data_resolution": 0.01,
+      "model_resolution": 0.004,
+      "regularization_factor": 1.2,
+      "incremental_coverage": true,
+      "outlier_distance_factor": 2.5,
+      "outlier_penalty_factor": 0.0,
+      "bbox_margin_factor": 1.0,
+      "bbox_penalty_factor": 0.0,
+      "overlap_penalty_factor": 0.0,
+      "control_smoothness_penalty_factor": 0.0,
+      "mm_bbox_penalty_factor": 0.0,
+      "early_rejection": true,
+      "use_faiss": true,
+      "data_file": "/home/m25lll/code/Fiting/fitting/datasets/synthetic/saddle_3k.ply",
+      "rule_class": "<from fitting.models.surface.nurbs_surface_rule import NURBSSurfaceRule>",
+      "estimator_class": "<from fitting.core.estimator.mm_estimator import MeanMeasureEstimator>",
+      "estimator_instance": null,
+      "load_data_fn": "<from fitting.tools.data_tool import load_ply_data>"
+    },
+    "fitter": {
+      "algo_name": "gd",
+      "num_instances": 1,
+      "max_episode": 20000,
+      "gd_lr": 0.01,
+      "gd_lr_min_factor": 0.1,
+      "gd_eval_interval": 200,
+      "gd_data_batch_size": 0,
+      "gd_init": "svd",
+      "gd_smoothness_weight": 0.05,
+      "gd_patience": 10,
+      "num_envs": 4,
+      "episodes_per_env": 50
+    },
+    "record": {
+      "root_dir": "/home/m25lll/code/Fiting/outputs/mm_compare/",
+      "pulse_size": 2000,
+      "verbose": true,
+      "trim_final_mesh": true
+    },
+    "raw_seeds": null,
+    "raw_device": {
+      "train_device": "cuda:1",
+      "cuda_deterministic": true
+    }
+  },
+  "dimension": 3,
+  "lower_bound": null,
+  "upper_bound": null,
+  "log_dir": "/home/m25lll/code/Fiting/outputs/mm_compare//2026-0623-1322-08/",
+  "out_json_file_name": "/home/m25lll/code/Fiting/outputs/mm_compare//2026-0623-1322-08/record.json",
+  "timestamp": "2026-0623-1322-08",
+  "name": -1,
+  "verbose": true,
+  "clock": "<not serializable>",
+  "start_time": 1782192128.3631375,
+  "plotter": null,
+  "pulse_size": 2000,
+  "update_count": 16,
+  "episode": 16,
+  "total_episode": 16,
+  "token_index": 0,
+  "data_cloud": "<not serializable>",
+  "best_score": 2.1669068466262735,
+  "best_cloud": "<not serializable>",
+  "best_estimator": "<not serializable>",
+  "best_token_set": [
+    "<not serializable>"
+  ],
+  "best_color": "<not serializable>",
+  "best_sub_record": 0,
+  "evolving_scores": [
+    0.356260566758524,
+    2.1434995790722144,
+    2.1551072006651464,
+    2.1572569166388145,
+    2.1595049207623713,
+    2.1625693988750143,
+    2.1641290584488866,
+    2.16653994165606,
+    2.1669068466262735
+  ],
+  "evolving_episodes": [
+    1,
+    3,
+    15,
+    17,
+    19,
+    21,
+    23,
+    29,
+    31
+  ],
+  "evolving_times": [
+    1.5259552001953125,
+    2.4216017723083496,
+    7.411861181259155,
+    8.246533393859863,
+    9.082663774490356,
+    9.918341159820557,
+    10.752924919128418,
+    13.244359731674194,
+    14.137303590774536
+  ],
+  "evolving_actions": [],
+  "evolving_traits": [],
+  "evolutions": "see the files named evolution_round_{}_of_instance_{}.json",
+  "base_cloud": "<not serializable>",
+  "base_color": "<not serializable>",
+  "round": 0
+}

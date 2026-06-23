@@ -28,6 +28,10 @@ def run_experiment(cfg):
         from core.optimizer.cs_fitter import Fitter
     elif algo == 'ala':
         from core.optimizer.ala_fitter import Fitter
+    elif algo == 'gd':
+        from core.optimizer.gd_fitter import Fitter
+    elif algo == 'memetic':
+        from core.optimizer.memetic_fitter import Fitter
     else:
         raise ValueError(f"Unknown algorithm: {algo}")
 
@@ -51,7 +55,7 @@ def get_estimator_class(cfg):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='configs/fit_character.yaml')
-    parser.add_argument('--algo', type=str, default=None, choices=['cco', 'cs', 'ala'])
+    parser.add_argument('--algo', type=str, default=None, choices=['cco', 'cs', 'ala', 'gd', 'memetic'])
     parser.add_argument('--estimator', type=str, default=None, choices=['npre', 'mm'])
     parser.add_argument('--runs', type=int, default=1)
     args = parser.parse_args()
@@ -80,7 +84,7 @@ if __name__ == "__main__":
     base_cfg['estimator'][
         'data_file'] = f"datasets/character/test/{noise_type}/{noise_level}/{test_id - 1}/noisy_{run_id}.png"
     base_cfg['record'][
-        'root_dir'] = f"./outputs/{algo}/character/{noise_type}/{noise_level}/{test_id - 1}/noisy_{run_id}/"
+        'root_dir'] = f"/home/m25lll/code/Fiting/outputs/{algo}/character/{noise_type}/{noise_level}/{test_id - 1}/noisy_{run_id}/"
     base_cfg['estimator']['rule_class'] = Rule
     base_cfg['estimator']['estimator_class'] = get_estimator_class(base_cfg)
     base_cfg['estimator']['estimator_instance'] = None

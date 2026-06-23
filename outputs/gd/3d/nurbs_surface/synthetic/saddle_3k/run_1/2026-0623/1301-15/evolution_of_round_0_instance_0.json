@@ -1,0 +1,29 @@
+[
+  {
+    "episode": 1,
+    "elpased_time": 1.321570634841919,
+    "score": 0.33701067464021994,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 3,
+    "elpased_time": 2.231482744216919,
+    "score": 2.844304245796531,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  },
+  {
+    "episode": 5,
+    "elpased_time": 3.1346120834350586,
+    "score": 2.847135327599464,
+    "trait": {
+      "control_points": "<not serializable>",
+      "weights": "<not serializable>"
+    }
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "episode": 1,
+    "elpased_time": 3.327608108520508,
+    "score": 1375.54150390625,
+    "trait": "<not serializable>"
+  },
+  {
+    "episode": 404,
+    "elpased_time": 6.556569814682007,
+    "score": 1490.830322265625,
+    "trait": "<not serializable>"
+  },
+  {
+    "episode": 604,
+    "elpased_time": 8.226192951202393,
+    "score": 1584.158935546875,
+    "trait": "<not serializable>"
+  },
+  {
+    "episode": 1983,
+    "elpased_time": 22.281861066818237,
+    "score": 1652.1275634765625,
+    "trait": "<not serializable>"
+  },
+  {
+    "episode": 2371,
+    "elpased_time": 25.904541730880737,
+    "score": 1717.625244140625,
+    "trait": "<not serializable>"
+  },
+  {
+    "episode": 2756,
+    "elpased_time": 29.588232040405273,
+    "score": 1786.921875,
+    "trait": "<not serializable>"
+  }
+]
