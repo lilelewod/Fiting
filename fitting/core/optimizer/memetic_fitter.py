@@ -312,11 +312,23 @@ class LocalRefiner:
         self.alpha = 1.2  # MM regularization factor
 
     def refine(self, action_np):
-        """Refine action in [-1,1] space. Returns refined action, score."""
+        """Refine action in [-1,1] space. Returns refined action, score.
+
+        cascade mode: Adam (fast, momentum) → L-BFGS (precise, second-order).
+        """
+        if self.method == 'cascade':
+            # Phase 1: Adam — 快速粗调
+            action_np = self._refine_with(action_np, 'adam', self.max_steps // 2)
+            # Phase 2: L-BFGS — 精确终调
+            action_np = self._refine_with(action_np, 'lbfgs', self.max_steps // 2)
+            return action_np
+        return self._refine_with(action_np, self.method, self.max_steps)
+
+    def _refine_with(self, action_np, method, steps):
         action = torch.nn.Parameter(
             torch.as_tensor(action_np, dtype=torch.float32, device=self.device))
 
-        if self.method == 'lbfgs':
+        if method == 'lbfgs':
             optimizer = torch.optim.LBFGS([action], lr=self.lr, history_size=10,
                                           max_iter=20, line_search_fn='strong_wolfe')
         else:
@@ -332,8 +344,8 @@ class LocalRefiner:
             loss.backward()
             return loss
 
-        for step in range(self.max_steps):
-            if self.method == 'lbfgs':
+        for step in range(steps):
+            if method == 'lbfgs':
                 loss = optimizer.step(closure)
             else:
                 optimizer.zero_grad()

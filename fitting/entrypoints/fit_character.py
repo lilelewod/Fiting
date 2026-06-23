@@ -57,7 +57,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str, default='configs/fit_character.yaml')
     parser.add_argument('--algo', type=str, default=None, choices=['cco', 'cs', 'ala', 'gd', 'memetic'])
     parser.add_argument('--estimator', type=str, default=None, choices=['npre', 'mm'])
-    parser.add_argument('--runs', type=int, default=1)
+    parser.add_argument('--runs', type=int, default=9)
     args = parser.parse_args()
 
     with open(args.config, 'r', encoding='utf-8') as f:
