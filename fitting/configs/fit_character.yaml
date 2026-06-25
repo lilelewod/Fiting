@@ -55,7 +55,7 @@ fitter:
   # AES 参数 (46D)
   aes_pop_size: 25
   aes_skeleton_size: 12
-  aes_refine_steps: 0               # character无refiner，纯骨架搜索
+  aes_refine_steps: 30              # 梯度引导+Adam精调
   aes_noise_scale: 0.08
   aes_restart_patience: 20
   aes_num_iters: 300

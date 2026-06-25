@@ -5,7 +5,7 @@
 
 task_type: '3d'
 run_id: 1
-data_file: '/home/m25lll/code/Fiting/fitting/datasets/synthetic/superq_ellipsoid_3k.ply'
+data_file: '/home/m25lll/code/Fiting/fitting/datasets/synthetic/superq_ellipsoid_outlier_3k.ply'
 
 # ── 模型: 超二次曲面 (11D: center×3 + scale×3 + shape×2 + rotation×3) ──
 model:
@@ -36,21 +36,21 @@ estimator:
 
 # ── 优化器 ──
 fitter:
-  algo_name: 'cco'
+  algo_name: 'memetic'
   num_instances: 1
 
   max_episode: 50000
 
   # Memetic (NL-SHADE + Adam refiner)
   gd_lr: 0.01
-  mem_pop_size: 150                 # 11D，增加种群多样性
-  mem_min_pop: 30                   # 不要缩太小，防早熟
+  mem_pop_size: 150
+  mem_min_pop: 30
   mem_refine_every: 999             # refiner 不支持 superquadric
   mem_refine_steps: 50
   mem_refine_method: 'adam'
   mem_refine_top_k: 1
-  mem_adaptive_K: true              # 收敛慢时自动调整
-  mem_num_workers: 12               # 并行加速
+  mem_adaptive_K: true
+  mem_num_workers: 12
 
   # AES 参数
   aes_pop_size: 20

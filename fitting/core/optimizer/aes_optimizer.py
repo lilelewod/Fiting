@@ -76,6 +76,7 @@ class AESConfig:
     refine_steps: int = 30
     refine_lr: float = 0.01
     refine_method: str = "adam"
+    gradient_guided: bool = False  # use gradient direction instead of skeleton PCA
     device: torch.device | None = None
     bounds: tuple[float, float] = (-1.0, 1.0)
     verbose: bool = True
@@ -102,10 +103,12 @@ class AESOptimizer:
         init_theta: np.ndarray,
         evaluator: Callable[[np.ndarray], float],
         config: AESConfig | None = None,
+        gradient_fn: Callable[[np.ndarray], np.ndarray] | None = None,
     ):
         self.dim = init_theta.shape[0]
         self.cfg = config or AESConfig(dim=self.dim)
         self.evaluator = evaluator
+        self.gradient_fn = gradient_fn  # theta → grad (numpy array)
         self.device = self.cfg.device or torch.device("cpu")
 
         lb, ub = self.cfg.bounds
@@ -242,13 +245,23 @@ class AESOptimizer:
         # ── Isotropic noise (scaled by adaptive noise_scale) ──
         noise = rng.normal(0, self.noise_scale * self._bound_range, (n, self.dim))
 
-        # ── Skeleton-guided direction ──
-        # Direction = weighted average of stored skeleton deltas from best
-        skeleton_dir = self._skeleton_direction()
-        if skeleton_dir is not None:
-            # Add skeleton-guided component to half the candidates
+        # ── Guided direction ──
+        guide_dir = None
+        if cfg.gradient_guided and self.gradient_fn is not None:
+            try:
+                guide_dir = self.gradient_fn(self.best_theta)
+                if guide_dir is not None and np.linalg.norm(guide_dir) > 1e-8:
+                    guide_dir = guide_dir / (np.linalg.norm(guide_dir) + 1e-8)
+                    guide_dir = guide_dir.astype(np.float32)
+            except Exception:
+                guide_dir = None
+
+        if guide_dir is None:
+            guide_dir = self._skeleton_direction()
+
+        if guide_dir is not None:
             alpha = 0.3 * self.noise_scale
-            noise[: n // 2] += alpha * skeleton_dir[np.newaxis, :]
+            noise[: n // 2] += alpha * guide_dir[np.newaxis, :]
 
         # ── Energy-aware perturbation ──
         if self._energy_grad is not None and cfg.energy_sensitivity > 0:

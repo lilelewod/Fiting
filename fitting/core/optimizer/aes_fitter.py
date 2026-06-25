@@ -136,6 +136,29 @@ class Fitter:
                 device=self.device, alpha=mm_alpha,
             )
 
+        elif model_type == 'character' or 'CharacterRule' in type(self.rule).__name__:
+            # Reuse GD fitter's character forward
+            from core.optimizer.gd_fitter import Fitter as GDFitter
+            ref_cfg = deepcopy(self.cfg)
+            if "raw_device" in ref_cfg:
+                ref_cfg["device"] = ref_cfg["raw_device"]
+            ref_cfg["seeds"] = None
+            gd = GDFitter(ref_cfg)
+            self._gd_ref = gd
+            data_t = torch.as_tensor(self.estimator.get_data(),
+                                     dtype=torch.float32, device=self.device)
+            def fwd(a):
+                pts, meas = gd._character_forward(a)
+                return pts, meas, None
+            from core.optimizer.memetic_fitter import AdamRefiner
+            mm_alpha = float(self.cfg.get("estimator", {}).get("regularization_factor", 0.5))
+            self._refiner = AdamRefiner(
+                forward_fn=fwd, data_tensor=data_t,
+                data_resolution=float(self.estimator.data_resolution),
+                lr=0.01, max_steps=self.refine_steps, method='adam',
+                device=self.device, alpha=mm_alpha,
+            )
+
         elif model_type == 'nurbs_surface':
             # Reuse memetic's _setup_refiner logic
             from core.optimizer.memetic_fitter import Fitter as MemFitter
@@ -199,13 +222,31 @@ class Fitter:
             self._setup_refiner()
 
         init = np.zeros(self.action_dim, dtype=np.float32)
+        grad_fn = None
+        if self._refiner is not None:
+            import torch
+            def grad_fn(action):
+                """Compute soft-MM gradient direction via refiner's forward."""
+                a = torch.as_tensor(action, dtype=torch.float32, device=self.device)
+                a.requires_grad_(True)
+                pts, meas = self._refiner.forward_fn(a)[:2]  # first two returns
+                loss = self._refiner._loss(pts, meas)
+                loss.backward()
+                g = a.grad.detach().cpu().numpy().astype(np.float32)
+                # Normalize to unit direction
+                gn = np.linalg.norm(g)
+                if gn > 1e-8:
+                    g /= gn
+                return g
+
         cfg = AESConfig(
             dim=self.action_dim, pop_size=self.pop_size,
-            skeleton_size=self.skeleton_size, refine_steps=0,  # handled externally
+            skeleton_size=self.skeleton_size, refine_steps=0,
             noise_scale_init=self.noise_scale,
             restart_patience=self.restart_patience, verbose=False,
+            gradient_guided=(self._refiner is not None),
         )
-        aes = AESOptimizer(init, self._eval_single, cfg)
+        aes = AESOptimizer(init, self._eval_single, cfg, gradient_fn=grad_fn)
 
         sub = SubRecord(self.cfg, env_id=0)
         sub.data_cloud = self.record.data_cloud
