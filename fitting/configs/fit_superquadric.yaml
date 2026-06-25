@@ -1,0 +1,72 @@
+# 超二次曲面拟合 — Memetic / CCO / GD (11D)
+#      python entrypoints/fit_point_cloud.py --config configs/fit_superquadric.yaml --model superquadric --algo memetic
+#      python entrypoints/fit_point_cloud.py --config configs/fit_superquadric.yaml --model superquadric --algo cco
+#      python entrypoints/fit_point_cloud.py --config configs/fit_superquadric.yaml --model superquadric --algo gd
+
+task_type: '3d'
+run_id: 1
+data_file: '/home/m25lll/code/Fiting/fitting/datasets/synthetic/superq_ellipsoid_3k.ply'
+
+# ── 模型: 超二次曲面 (11D: center×3 + scale×3 + shape×2 + rotation×3) ──
+model:
+  type: 'superquadric'
+
+# ── 设备 ──
+device:
+  train_device: 'cuda:1'
+  cuda_deterministic: true
+seeds: null
+
+# ── 评分器: Mean Measure (λ=0.5) ──
+estimator:
+  type: 'mm'
+  data_resolution: 0.01
+  model_resolution: 0.004
+  regularization_factor: 0.5
+  incremental_coverage: true
+  outlier_distance_factor: 2.5
+  outlier_penalty_factor: 0.0
+  bbox_margin_factor: 1.0
+  bbox_penalty_factor: 0.0
+  overlap_penalty_factor: 0.0
+  control_smoothness_penalty_factor: 0.0
+  mm_bbox_penalty_factor: 0.0
+  early_rejection: false             # superquadric 不支持分级采样
+  use_faiss: true
+
+# ── 优化器 ──
+fitter:
+  algo_name: 'cco'
+  num_instances: 1
+
+  max_episode: 50000
+
+  # Memetic (NL-SHADE + Adam refiner)
+  gd_lr: 0.01
+  mem_pop_size: 150                 # 11D，增加种群多样性
+  mem_min_pop: 30                   # 不要缩太小，防早熟
+  mem_refine_every: 999             # refiner 不支持 superquadric
+  mem_refine_steps: 50
+  mem_refine_method: 'adam'
+  mem_refine_top_k: 1
+  mem_adaptive_K: true              # 收敛慢时自动调整
+  mem_num_workers: 12               # 并行加速
+
+  # AES 参数
+  aes_pop_size: 20
+  aes_skeleton_size: 10
+  aes_refine_steps: 30
+  aes_noise_scale: 0.08
+  aes_restart_patience: 20
+  aes_num_iters: 200
+
+  # CCO/CS 参数
+  num_envs: 8
+  episodes_per_env: 50
+
+# ── 输出 ──
+record:
+  root_dir: '/home/m25lll/code/Fiting/outputs/superquadric/'
+  pulse_size: 20
+  verbose: true
+  trim_final_mesh: true

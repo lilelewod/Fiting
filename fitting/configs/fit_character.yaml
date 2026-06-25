@@ -27,7 +27,7 @@ rule:
 estimator:
   type: 'mm'                #mm ,npre
   early_rejection: false
-  regularization_factor: 1
+  regularization_factor: 0.5
   device: null
   open3d_version: 'legacy'
   h: 1.0
@@ -35,11 +35,31 @@ estimator:
 
 # ===== 核心寻优算法设置 =====
 fitter:
-  algo_name: 'memetic'
+  algo_name: 'cco'
   num_instances: 1          # 要拟合多少个实例 (比如笔画数)
   num_envs: 8              # 并行环境数量
   episodes_per_env: 10     # 每个环境评估的个体数 (总种群 = 5*5 = 25)
   max_episode: 50000
+
+  # Memetic 参数 (GD/CS/CCO/ALA 忽略)
+  gd_lr: 0.01
+  mem_pop_size: 100                 # 46D用100就够了
+  mem_min_pop: 20
+  mem_refine_every: 15              # 降低精调频率
+  mem_refine_steps: 50              # 精调步数
+  mem_refine_method: 'adam'
+  mem_refine_top_k: 1
+  mem_adaptive_K: true
+  mem_num_workers: 4                # 多进程并行评估 (spawn, CPU workers)
+
+  # AES 参数 (46D)
+  aes_pop_size: 25
+  aes_skeleton_size: 12
+  aes_refine_steps: 0               # character无refiner，纯骨架搜索
+  aes_noise_scale: 0.08
+  aes_restart_patience: 20
+  aes_num_iters: 300
+  aes_verbose: true
 
 # ===== 采集器设置 =====
 collector:

@@ -1,22 +1,20 @@
-# MM评分对比实验 — GD vs CCO vs CS vs ALA
-#      python entrypoints/fit_point_cloud.py --config configs/fit_mm_compare.yaml --algo gd
-#      python entrypoints/fit_point_cloud.py --config configs/fit_mm_compare.yaml --algo cco
-#      python entrypoints/fit_point_cloud.py --config configs/fit_mm_compare.yaml --algo cs
-#      python entrypoints/fit_point_cloud.py --config configs/fit_mm_compare.yaml --algo ala
+# NURBS曲面拟合 — Memetic (NL-SHADE + Adam Refiner)
+#      python entrypoints/fit_point_cloud.py --config configs/fit_mm_compare.yaml --model nurbs_surface --algo memetic
+#      python entrypoints/fit_point_cloud.py --config configs/fit_mm_compare.yaml --model nurbs_surface --algo cco
 
 task_type: '3d'
 run_id: 1
-data_file: '/home/m25lll/code/Fiting/fitting/datasets/synthetic/cylinder_4k.ply'
+data_file: '/home/m25lll/code/Fiting/fitting/datasets/synthetic/saddle_3k.ply'
 
-# ── 模型 ──
+# ── 模型: 双三次NURBS张量积曲面 (16×16=256控制点×4=1024D) ──
 model:
-  type: 'cylinder' # curve, surface, nurbs_surface, cylinder
-  num_ctrl_u: 6
-  num_ctrl_v: 6 #控制网格
+  type: 'nurbs_surface'
+  num_ctrl_u: 8
+  num_ctrl_v: 8
   degree_u: 3
   degree_v: 3
-  sample_u: 60
-  sample_v: 60
+  sample_u: 100
+  sample_v: 100
   weight_lb: 0.8
   weight_ub: 1.2
 
@@ -26,50 +24,56 @@ device:
   cuda_deterministic: true
 seeds: null
 
-# ── 评分器: Mean Measure (Zhang et al. PR 2019) ──
+# ── 评分器: Mean Measure (λ=0.5) ──
 estimator:
   type: 'mm'
   data_resolution: 0.01
   model_resolution: 0.004
-  regularization_factor: 1.2
+  regularization_factor: 0.5       # 张老师默认
   incremental_coverage: true
   outlier_distance_factor: 2.5
   outlier_penalty_factor: 0.0
   bbox_margin_factor: 1.0
   bbox_penalty_factor: 0.0
   overlap_penalty_factor: 0.0
-  control_smoothness_penalty_factor: 0.0
-  mm_bbox_penalty_factor: 0.0
-  early_rejection: true
+  control_smoothness_penalty_factor: 0.0    # 不加平滑，让NL-SHADE自由搜索
+  mm_bbox_penalty_factor: 0.0               # 不加边界约束
+  early_rejection: true              # NURBS支持分级采样
   use_faiss: true
 
-# ── 优化器 (algo_name 由 --algo 覆盖) ──
+# ── 优化器 ──
 fitter:
-  algo_name: 'cs'
+  algo_name: 'memetic'
   num_instances: 1
 
-  max_episode: 100000                # 总评估次数
+  max_episode: 30000                # 256D，够用
+
+  # Memetic (NL-SHADE + Adam refiner)
   gd_lr: 0.01
-  gd_lr_min_factor: 0.1
-  gd_eval_interval: 200
-  gd_data_batch_size: 0
-  gd_init: 'svd'
-  gd_smoothness_weight: 0.05
-
-  # Memetic 参数
-  mem_pop_size: 200                 # 初始种群
-  mem_min_pop: 30                   # 线性缩减到的最小种群
-  mem_refine_every: 10              # 每N代局部精调
-  mem_refine_steps: 100             # 精调步数
+  mem_pop_size: 100                 # 256D
+  mem_min_pop: 20
+  mem_refine_every: 10
+  mem_refine_steps: 50
   mem_refine_method: 'adam'
+  mem_refine_top_k: 1
+  mem_adaptive_K: true
+  mem_num_workers: 4
 
-  # CS/CCO/ALA 参数 (GD/Memetic忽略)
-  num_envs: 4
+  # AES 参数 (256D)
+  aes_pop_size: 25
+  aes_skeleton_size: 12
+  aes_refine_steps: 30
+  aes_noise_scale: 0.1
+  aes_restart_patience: 25
+  aes_num_iters: 300
+
+  # CCO/CS 参数
+  num_envs: 8
   episodes_per_env: 50
 
 # ── 输出 ──
 record:
   root_dir: '/home/m25lll/code/Fiting/outputs/mm_compare/'
-  pulse_size: 2000
+  pulse_size: 20
   verbose: true
   trim_final_mesh: true

@@ -32,6 +32,8 @@ def run_experiment(cfg):
         from core.optimizer.gd_fitter import Fitter
     elif algo == 'memetic':
         from core.optimizer.memetic_fitter import Fitter
+    elif algo == 'aes':
+        from core.optimizer.aes_fitter import Fitter
     else:
         raise ValueError(f"Unknown algorithm: {algo}")
 
@@ -55,9 +57,9 @@ def get_estimator_class(cfg):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='configs/fit_character.yaml')
-    parser.add_argument('--algo', type=str, default=None, choices=['cco', 'cs', 'ala', 'gd', 'memetic'])
+    parser.add_argument('--algo', type=str, default=None, choices=['cco', 'cs', 'ala', 'gd', 'memetic', 'aes'])
     parser.add_argument('--estimator', type=str, default=None, choices=['npre', 'mm'])
-    parser.add_argument('--runs', type=int, default=9)
+    parser.add_argument('--runs', type=int, default=1)
     args = parser.parse_args()
 
     with open(args.config, 'r', encoding='utf-8') as f:

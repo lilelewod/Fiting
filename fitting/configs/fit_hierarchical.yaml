@@ -1,0 +1,76 @@
+# 层次化 NURBS 拟合: 粗(4×4 CCO) → 插值升维 → 细(16×16 GD)
+#      python entrypoints/fit_point_cloud.py --config configs/fit_hierarchical.yaml --algo hierarchical
+
+task_type: '3d'
+run_id: 1
+data_file: '/home/m25lll/code/Fiting/fitting/datasets/synthetic/saddle_3k.ply'
+
+# ── 模型: NURBS surface (最终精细网格 16×16=1024D) ──
+model:
+  type: 'nurbs_surface'
+  num_ctrl_u: 16
+  num_ctrl_v: 16
+  degree_u: 3
+  degree_v: 3
+  sample_u: 100
+  sample_v: 100
+  weight_lb: 0.8
+  weight_ub: 1.2
+
+# ── 设备 ──
+device:
+  train_device: 'cuda:1'
+  cuda_deterministic: true
+seeds: null
+
+# ── 评分器: Mean Measure ──
+estimator:
+  type: 'mm'
+  data_resolution: 0.01
+  model_resolution: 0.004
+  regularization_factor: 0.5      # 张老师默认，√|M|/error
+  incremental_coverage: true
+  outlier_distance_factor: 2.5
+  outlier_penalty_factor: 0.0
+  bbox_margin_factor: 1.0
+  bbox_penalty_factor: 0.0
+  overlap_penalty_factor: 0.0
+  control_smoothness_penalty_factor: 0.05   # 粗搜阶段就约束平滑，防表面膨胀
+  mm_bbox_penalty_factor: 0.01              # 边界约束
+  early_rejection: true
+  use_faiss: true
+
+# ── 层次化优化器: Phase 1(粗搜) → Phase 2(插值) → Phase 3(精调) ──
+fitter:
+  algo_name: 'hierarchical'
+  num_instances: 1
+
+  # Phase 1: 粗糙层 (4×4=16D) — 启发式全局搜索
+  hier_coarse_algo: 'memetic'    # NL-SHADE粗搜，16D下很快
+  hier_coarse_evals: 30000       # 粗搜评估预算
+
+  # Phase 2: 自动 NURBS knot insertion (4×4 → 16×16) — 曲面形状完全保持
+
+  # Phase 3: L-BFGS + dynamic projection (hard Chamfer blocks + soft MM final)
+  hier_fine_steps: 200           # 总L-BFGS步数（投影块×15 + 软精调×10 ≈ 160-200）
+  hier_fine_lr: 0.01             # (L-BFGS自动调整，此值作fallback)
+  hier_smoothness: 0.1           # 薄板能量正则化
+
+  # GD 通用参数
+  gd_eval_interval: 20
+  gd_patience: 0
+  gd_lr: 0.01
+  gd_lr_min_factor: 0.1
+  gd_smoothness_weight: 0.1
+
+  # 粗搜算法的通用参数
+  num_envs: 8
+  episodes_per_env: 50
+  mem_num_workers: 12               # 粗搜 NL-SHADE 并行
+
+# ── 输出 ──
+record:
+  root_dir: '/home/m25lll/code/Fiting/outputs/hierarchical/'
+  pulse_size: 20
+  verbose: true
+  trim_final_mesh: true

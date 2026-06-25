@@ -39,6 +39,14 @@ def get_rule_class(cfg):
         from models.surface.cylinder_rule import CylinderRule
 
         return CylinderRule
+    if model_type == 'sphere':
+        from models.surface.sphere_rule import SphereRule
+
+        return SphereRule
+    if model_type == 'superquadric':
+        from models.surface.superquadric_rule import SuperquadricRule
+
+        return SuperquadricRule
     raise ValueError(f"Unknown 3D model type: {model_type}")
 
 
@@ -56,6 +64,10 @@ def run_experiment(cfg):
         from core.optimizer.spsa_fitter import Fitter
     elif algo == 'memetic':
         from core.optimizer.memetic_fitter import Fitter
+    elif algo == 'aes':
+        from core.optimizer.aes_fitter import Fitter
+    elif algo == 'hierarchical':
+        from core.optimizer.hierarchical_fitter import HierarchicalFitter as Fitter
     else:
         raise ValueError(f"Unknown algorithm: {algo}")
 
@@ -101,9 +113,9 @@ def prepare_3d_cfg(base_cfg):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='configs/fit_mm_compare.yaml')
-    parser.add_argument('--algo', type=str, default=None, choices=['cco', 'gd', 'cs', 'ala', 'spsa', 'memetic'])
+    parser.add_argument('--algo', type=str, default=None, choices=['cco', 'gd', 'cs', 'ala', 'spsa', 'memetic', 'hierarchical', 'aes'])
     parser.add_argument('--estimator', type=str, default=None, choices=['npre', 'gd', 'mm'])
-    parser.add_argument('--model', type=str, default=None, choices=['curve', 'surface', 'nurbs_surface'])
+    parser.add_argument('--model', type=str, default=None, choices=['curve', 'surface', 'nurbs_surface', 'cylinder', 'sphere', 'superquadric'])
     parser.add_argument('--data-file', type=str, default=None)
     parser.add_argument('--num-instances', type=int, default=None)
     parser.add_argument('--num-envs', type=int, default=None)
@@ -112,7 +124,7 @@ def main():
     parser.add_argument('--data-resolution', type=float, default=None)
     parser.add_argument('--model-resolution', type=float, default=None)
     parser.add_argument('--visualization', type=str, default=None, choices=['parallel', 'non-parallel', 'none'])
-    parser.add_argument('--runs', type=int, default=10)
+    parser.add_argument('--runs', type=int, default=1)
     args = parser.parse_args()
 
     with open(args.config, 'r', encoding='utf-8') as f:

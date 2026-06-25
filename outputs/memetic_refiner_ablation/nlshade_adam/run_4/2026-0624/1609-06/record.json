@@ -1,0 +1,128 @@
+{
+  "cfg": {
+    "task_type": "3d",
+    "run_id": 4,
+    "data_file": "/home/m25lll/code/Fiting/fitting/datasets/synthetic/saddle_3k.ply",
+    "model": {
+      "type": "nurbs_surface",
+      "num_ctrl_u": 16,
+      "num_ctrl_v": 16,
+      "degree_u": 3,
+      "degree_v": 3,
+      "sample_u": 100,
+      "sample_v": 100,
+      "weight_lb": 0.8,
+      "weight_ub": 1.2
+    },
+    "device": "<not serializable>",
+    "seeds": [
+      41958
+    ],
+    "estimator": {
+      "type": "mm",
+      "data_resolution": 0.01,
+      "model_resolution": 0.004,
+      "regularization_factor": 0.5,
+      "incremental_coverage": true,
+      "outlier_distance_factor": 2.5,
+      "outlier_penalty_factor": 0.0,
+      "bbox_margin_factor": 1.0,
+      "bbox_penalty_factor": 0.0,
+      "overlap_penalty_factor": 0.0,
+      "control_smoothness_penalty_factor": 0.0,
+      "mm_bbox_penalty_factor": 0.0,
+      "early_rejection": true,
+      "use_faiss": true,
+      "rule_class": "<from models.surface.nurbs_surface_rule import NURBSSurfaceRule>",
+      "estimator_class": "<from core.estimator.mm_estimator import MeanMeasureEstimator>",
+      "estimator_instance": null,
+      "load_data_fn": "<from tools.data_tool import load_ply_data>",
+      "data_file": "/home/m25lll/code/Fiting/fitting/datasets/synthetic/saddle_3k.ply"
+    },
+    "fitter": {
+      "algo_name": "memetic",
+      "num_instances": 1,
+      "max_episode": 30000,
+      "gd_lr": 0.01,
+      "mem_pop_size": 200,
+      "mem_min_pop": 20,
+      "mem_refine_every": 10,
+      "mem_refine_steps": 50,
+      "mem_refine_method": "adam",
+      "mem_refine_top_k": 1,
+      "mem_adaptive_K": true,
+      "mem_num_workers": 12,
+      "num_envs": 8,
+      "episodes_per_env": 50
+    },
+    "record": {
+      "root_dir": "/home/m25lll/code/Fiting/outputs/memetic_refiner_ablation/nlshade_adam/run_4",
+      "pulse_size": 20,
+      "verbose": true,
+      "trim_final_mesh": true,
+      "timestamp": "2026-0624/1609-06"
+    },
+    "raw_device": {
+      "train_device": "cuda:1",
+      "cuda_deterministic": true
+    }
+  },
+  "dimension": 3,
+  "lower_bound": null,
+  "upper_bound": null,
+  "log_dir": "/home/m25lll/code/Fiting/outputs/memetic_refiner_ablation/nlshade_adam/run_4/2026-0624/1609-06/",
+  "out_json_file_name": "/home/m25lll/code/Fiting/outputs/memetic_refiner_ablation/nlshade_adam/run_4/2026-0624/1609-06/record.json",
+  "timestamp": "2026-0624/1609-06",
+  "name": -1,
+  "verbose": true,
+  "clock": "<not serializable>",
+  "start_time": 1782288546.4471128,
+  "plotter": null,
+  "pulse_size": 20,
+  "update_count": 7,
+  "episode": 7,
+  "total_episode": 7,
+  "token_index": 0,
+  "data_cloud": "<not serializable>",
+  "best_score": 3.4724912643432617,
+  "best_cloud": "<not serializable>",
+  "best_estimator": "<not serializable>",
+  "best_token_set": [
+    "<not serializable>"
+  ],
+  "best_color": "<not serializable>",
+  "best_sub_record": 0,
+  "evolving_scores": [
+    0.4478875994682312,
+    0.47112470865249634,
+    1.5668748999789566,
+    2.9048271655774656,
+    3.328697875470482,
+    3.4724854832407046,
+    3.4724912643432617
+  ],
+  "evolving_episodes": [
+    1,
+    3,
+    5,
+    7,
+    9,
+    11,
+    13
+  ],
+  "evolving_times": [
+    7.2672131061553955,
+    7.991344213485718,
+    8.587246179580688,
+    15.26514220237732,
+    21.319787740707397,
+    27.22675895690918,
+    84.7535150051117
+  ],
+  "evolving_actions": [],
+  "evolving_traits": [],
+  "evolutions": "see the files named evolution_round_{}_of_instance_{}.json",
+  "base_cloud": "<not serializable>",
+  "base_color": "<not serializable>",
+  "round": 0
+}
