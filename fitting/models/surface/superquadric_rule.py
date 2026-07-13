@@ -1,15 +1,30 @@
-"""Superquadric rule for geometric model fitting.
+"""
+Superquadric rule for geometric model fitting.
 
-Action space (11D): center(3) + scale(3) + shape(2) + rotation(3)
+Action space 11D:
+    center(3) + scale(3) + shape(2) + rotation(3)
 
-Superquadric parametric surface:
-  r(η, ω) = [a1 * C(η,ε1) * C(ω,ε2),
-              a2 * S(η,ε1) * C(ω,ε2),
-              a3 * S(ω,ε2)]
-  where C(θ,ε)=sgn(cos θ)·|cos θ|^ε, S(θ,ε)=sgn(sin θ)·|sin θ|^ε
-  η∈[-π,π], ω∈[-π/2,π/2], ε1,ε2>0
+This rule generates a closed superquadric surface.
 
-Reference: Barr, "Superquadrics and Angle-Preserving Transformations", CG&A 1981
+Parameterization used here:
+    x = a1 * C(eta, e1) * C(omega, e2)
+    y = a2 * S(eta, e1) * C(omega, e2)
+    z = a3 * S(omega, e2)
+
+where:
+    C(t, e) = sign(cos(t)) * |cos(t)|^e
+    S(t, e) = sign(sin(t)) * |sin(t)|^e
+
+    eta   ∈ [-pi, pi)
+    omega ∈ (-pi/2, pi/2)
+
+Meaning:
+    a1, a2, a3 : half-size / scale parameters
+    e1         : controls shape in x-y section
+    e2         : controls vertical profile, cylinder-like when small
+
+Reference:
+    Barr, "Superquadrics and Angle-Preserving Transformations", IEEE CG&A, 1981
 """
 
 import numpy as np
@@ -18,150 +33,369 @@ from scipy.spatial.transform import Rotation
 
 class SuperquadricTrait:
     def __init__(self):
-        self.center = None       # (3,)  np.float32
-        self.scale = None        # (3,)  np.float32 — a1, a2, a3
-        self.shape = None        # (2,)  np.float32 — ε1, ε2
-        self.rotation = None     # (3,)  np.float32 — Euler angles (rx, ry, rz)
-        self.rot_matrix = None   # (3,3) np.float32
+        self.center = None       # (3,)
+        self.scale = None        # (3,)  a1, a2, a3
+        self.shape = None        # (2,)  e1, e2
+        self.rotation = None     # (3,)  Euler angles rx, ry, rz
+        self.rot_matrix = None   # (3,3)
 
 
 class SuperquadricRule:
-    """Superquadric: 11D action → point cloud.
+    """
+    Superquadric: 11D action -> point cloud.
 
-    ``parse(action)`` maps [-1,1]¹¹ to [center(3), scale(3), shape(2), rotation(3)].
-    ``generate()`` samples the parametric surface.
+    parse(action):
+        maps action in [-1, 1]^11 to actual geometric parameters.
+
+    sample():
+        returns sampled closed superquadric points.
+
+    sample_with_weights():
+        returns sampled points and local surface-area weights.
+        This is useful for improving MM/PMF estimator.
     """
 
-    def __init__(self, estimator=None):
+    def __init__(
+        self,
+        estimator=None,
+        n_eta=96,
+        n_omega=96,
+        shape_min=0.10,
+        shape_max=2.50,
+        pole_eps=1e-4,
+    ):
         self.estimator = estimator
         self.trait = SuperquadricTrait()
         self.action = None
+
+        self.n_eta = int(n_eta)
+        self.n_omega = int(n_omega)
+        self.shape_min = float(shape_min)
+        self.shape_max = float(shape_max)
+        self.pole_eps = float(pole_eps)
+
+        self.lb = None
+        self.ub = None
         self._initialized = False
+
+    # ------------------------------------------------------------
+    # Basic interface
+    # ------------------------------------------------------------
+    def get_num_variables(self):
+        return 11
 
     def _init_bounds(self):
         if self._initialized:
             return
+
+        if self.estimator is None:
+            raise ValueError("SuperquadricRule requires estimator to initialize bounds.")
+
         pts = self.estimator.get_data()
+        pts = np.asarray(pts, dtype=np.float32)
+
         lo = pts.min(axis=0)
         hi = pts.max(axis=0)
         extent = hi - lo
-        data_scale = float(np.linalg.norm(extent))
+        diag = float(np.linalg.norm(extent))
 
-        # --- center ---
-        padding = 0.2 * extent
+        if diag <= 1e-8:
+            diag = 1.0
+
         self.lb = np.zeros(11, dtype=np.float32)
         self.ub = np.zeros(11, dtype=np.float32)
+
+        # center bounds
+        padding = 0.2 * extent
         self.lb[0:3] = lo - padding
         self.ub[0:3] = hi + padding
 
-        # --- scale ---
-        self.lb[3:6] = 0.02 * data_scale
-        self.ub[3:6] = 1.5 * data_scale
+        # scale bounds: a1, a2, a3 are half-size parameters
+        self.lb[3:6] = 0.02 * diag
+        self.ub[3:6] = 1.20 * diag
 
-        # --- shape (ε1, ε2) ---
-        self.lb[6:8] = 0.1
-        self.ub[6:8] = 2.5
+        # shape bounds: e1, e2
+        self.lb[6:8] = self.shape_min
+        self.ub[6:8] = self.shape_max
 
-        # --- rotation (Euler angles) ---
+        # Euler rotation bounds
         self.lb[8:11] = -np.pi
         self.ub[8:11] = np.pi
 
         self._initialized = True
 
-    def get_num_variables(self):
-        return 11
+    def _rescale(self, action):
+        action = np.asarray(action, dtype=np.float32).reshape(-1)
+        action = np.clip(action, -1.0, 1.0)
+        return self.lb + (self.ub - self.lb) * (action + 1.0) / 2.0
 
     def parse(self, **kwargs):
         self._init_bounds()
-        action = kwargs["action"]
+
+        action = np.asarray(kwargs["action"], dtype=np.float32).reshape(-1)
+
         if action.size != 11:
-            raise ValueError(f"SuperquadricRule expects 11 variables, got {action.size}")
-        flat = self._rescale(action).astype(float)
+            raise ValueError(
+                f"SuperquadricRule expects 11 variables, got {action.size}"
+            )
+
+        flat = self._rescale(action).astype(np.float32)
 
         trait = SuperquadricTrait()
-        trait.center = flat[0:3]
-        trait.scale = flat[3:6]
-        trait.shape = flat[6:8]
-        euler = flat[8:11]
+        trait.center = flat[0:3].astype(np.float32)
+        trait.scale = flat[3:6].astype(np.float32)
+        trait.shape = flat[6:8].astype(np.float32)
+
+        euler = flat[8:11].astype(np.float32)
         trait.rotation = euler
-        trait.rot_matrix = Rotation.from_euler('xyz', euler).as_matrix().astype(np.float32)
+        trait.rot_matrix = Rotation.from_euler("xyz", euler).as_matrix().astype(np.float32)
 
         self.trait = trait
-        self.action = action
+        self.action = action.astype(np.float32)
+
         return trait
 
-    def _rescale(self, action):
-        return self.lb + (self.ub - self.lb) * (np.clip(action, -1.0, 1.0) + 1.0) / 2.0
+    # ------------------------------------------------------------
+    # Superquadric geometry
+    # ------------------------------------------------------------
+    @staticmethod
+    def _signed_power(v, e):
+        """
+        Stable signed power:
+            sign(v) * |v|^e
+        """
+        v = np.asarray(v, dtype=np.float32)
+        return np.sign(v) * (np.abs(v) ** e)
+
+    @classmethod
+    def _local_surface_grid(
+        cls,
+        a1,
+        a2,
+        a3,
+        e1,
+        e2,
+        n_eta=96,
+        n_omega=96,
+        pole_eps=1e-4,
+    ):
+        """
+        Generate local superquadric grid before rotation and translation.
+
+        Returns:
+            grid: (n_eta, n_omega, 3)
+        """
+
+        # eta is periodic. endpoint=False avoids duplicated seam.
+        eta = np.linspace(
+            -np.pi,
+            np.pi,
+            n_eta,
+            endpoint=False,
+            dtype=np.float32,
+        )
+
+        # Avoid exact poles to prevent many duplicated points at top/bottom.
+        omega = np.linspace(
+            -np.pi / 2.0 + pole_eps,
+            np.pi / 2.0 - pole_eps,
+            n_omega,
+            endpoint=True,
+            dtype=np.float32,
+        )
+
+        eta_g, omega_g = np.meshgrid(eta, omega, indexing="ij")
+
+        c_eta = cls._signed_power(np.cos(eta_g), e1)
+        s_eta = cls._signed_power(np.sin(eta_g), e1)
+        c_omega = cls._signed_power(np.cos(omega_g), e2)
+        s_omega = cls._signed_power(np.sin(omega_g), e2)
+
+        x = a1 * c_eta * c_omega
+        y = a2 * s_eta * c_omega
+        z = a3 * s_omega
+
+        grid = np.stack([x, y, z], axis=-1).astype(np.float32)
+        return grid
 
     @staticmethod
-    def _spherical_product(a1, a2, a3, e1, e2, n_eta=80, n_omega=80):
-        """Generate superquadric surface points via spherical product.
+    def _triangle_area(p0, p1, p2):
+        return 0.5 * np.linalg.norm(np.cross(p1 - p0, p2 - p0, axis=-1), axis=-1)
 
-        Returns points (N, 3) and approximate measure.
+    @classmethod
+    def _vertex_area_weights(cls, grid):
         """
-        eta = np.linspace(-np.pi, np.pi, n_eta, dtype=np.float32)
-        omega = np.linspace(-np.pi / 2, np.pi / 2, n_omega, dtype=np.float32)
-        eta_g, omega_g = np.meshgrid(eta, omega, indexing='ij')  # (n_eta, n_omega)
+        Approximate local area weight for each vertex.
 
-        cos_e = np.cos(eta_g)
-        sin_e = np.sin(eta_g)
-        cos_o = np.cos(omega_g)
-        sin_o = np.sin(omega_g)
+        The eta direction is periodic, so the last eta row connects to the first.
+        The omega direction is not periodic.
 
-        def _spow(val, exp):
-            return np.sign(val) * (np.abs(val) ** exp)
+        Returns:
+            weights: (n_eta, n_omega)
+            total_area: float
+        """
 
-        c1 = _spow(cos_e, e1) * _spow(cos_o, e2)
-        c2 = _spow(sin_e, e1) * _spow(cos_o, e2)
-        c3 = _spow(sin_o, e2)
+        n_eta, n_omega, _ = grid.shape
+        weights = np.zeros((n_eta, n_omega), dtype=np.float32)
 
-        x = a1 * c1
-        y = a2 * c2
-        z = a3 * c3
+        for i in range(n_eta):
+            i_next = (i + 1) % n_eta
 
-        pts = np.stack([x, y, z], axis=-1).reshape(-1, 3)
+            for j in range(n_omega - 1):
+                p00 = grid[i, j]
+                p10 = grid[i_next, j]
+                p01 = grid[i, j + 1]
+                p11 = grid[i_next, j + 1]
 
-        # Approximate measure: sum triangle areas
-        p00 = np.stack([x[:-1, :-1], y[:-1, :-1], z[:-1, :-1]], axis=-1)
-        p10 = np.stack([x[1:, :-1], y[1:, :-1], z[1:, :-1]], axis=-1)
-        p01 = np.stack([x[:-1, 1:], y[:-1, 1:], z[:-1, 1:]], axis=-1)
-        p11 = np.stack([x[1:, 1:], y[1:, 1:], z[1:, 1:]], axis=-1)
+                # Two triangles:
+                #   tri1: p00, p10, p01
+                #   tri2: p10, p11, p01
+                area1 = cls._triangle_area(p00, p10, p01)
+                area2 = cls._triangle_area(p10, p11, p01)
 
-        area1 = 0.5 * np.linalg.norm(np.cross(p10 - p00, p01 - p00, axis=-1), axis=-1).sum()
-        area2 = 0.5 * np.linalg.norm(np.cross(p11 - p10, p01 - p10, axis=-1), axis=-1).sum()
-        measure = float(area1 + area2)
+                share1 = area1 / 3.0
+                share2 = area2 / 3.0
+
+                weights[i, j] += share1
+                weights[i_next, j] += share1
+                weights[i, j + 1] += share1
+
+                weights[i_next, j] += share2
+                weights[i_next, j + 1] += share2
+                weights[i, j + 1] += share2
+
+        total_area = float(weights.sum())
+        return weights, total_area
+
+    @classmethod
+    def _spherical_product(
+        cls,
+        a1,
+        a2,
+        a3,
+        e1,
+        e2,
+        n_eta=96,
+        n_omega=96,
+        pole_eps=1e-4,
+        return_weights=False,
+    ):
+        """
+        Generate local superquadric surface points.
+
+        Returns:
+            if return_weights=False:
+                points, measure
+
+            if return_weights=True:
+                points, weights, measure
+        """
+
+        grid = cls._local_surface_grid(
+            a1=a1,
+            a2=a2,
+            a3=a3,
+            e1=e1,
+            e2=e2,
+            n_eta=n_eta,
+            n_omega=n_omega,
+            pole_eps=pole_eps,
+        )
+
+        area_weights, measure = cls._vertex_area_weights(grid)
+
+        pts = grid.reshape(-1, 3).astype(np.float32)
+        weights = area_weights.reshape(-1).astype(np.float32)
+
+        # Avoid zero weights caused by numerical degeneracy
+        weights = np.maximum(weights, 1e-12).astype(np.float32)
+
+        if return_weights:
+            return pts, weights, measure
 
         return pts, measure
 
+    # ------------------------------------------------------------
+    # Public sampling and measure
+    # ------------------------------------------------------------
     @staticmethod
-    def measure(trait):
-        """Approximate surface area via spherical product sampling."""
-        pts, m = SuperquadricRule._spherical_product(
-            trait.scale[0], trait.scale[1], trait.scale[2],
-            trait.shape[0], trait.shape[1],
-            n_eta=60, n_omega=60,
+    def measure(trait, n_eta=96, n_omega=96, pole_eps=1e-4):
+        """
+        Approximate surface area of the superquadric.
+        Rotation and translation do not change area.
+        """
+        _, m = SuperquadricRule._spherical_product(
+            trait.scale[0],
+            trait.scale[1],
+            trait.scale[2],
+            trait.shape[0],
+            trait.shape[1],
+            n_eta=n_eta,
+            n_omega=n_omega,
+            pole_eps=pole_eps,
+            return_weights=False,
         )
-        return m
+        return float(m)
+
+    def sample_with_weights(self):
+        """
+        Generate transformed superquadric points and local area weights.
+
+        Returns:
+            pts:     (N, 3)
+            weights: (N,)
+            measure: float
+        """
+
+        t = self.trait
+
+        pts, weights, measure = self._spherical_product(
+            t.scale[0],
+            t.scale[1],
+            t.scale[2],
+            t.shape[0],
+            t.shape[1],
+            n_eta=self.n_eta,
+            n_omega=self.n_omega,
+            pole_eps=self.pole_eps,
+            return_weights=True,
+        )
+
+        pts = pts @ t.rot_matrix.T + t.center
+        pts = pts.astype(np.float32)
+
+        return pts, weights.astype(np.float32), float(measure)
 
     def sample(self):
-        """Generate superquadric surface points."""
-        t = self.trait
-        pts, _ = self._spherical_product(
-            t.scale[0], t.scale[1], t.scale[2],
-            t.shape[0], t.shape[1],
-            n_eta=64, n_omega=64,
-        )
-        pts = pts @ t.rot_matrix.T + t.center
+        """
+        Generate transformed superquadric surface points.
+        """
+        pts, _, _ = self.sample_with_weights()
         return pts.astype(np.float32)
 
     def generate(self):
+        """
+        Generate token and add it to estimator.
+
+        If your current MM estimator does not use token.weights,
+        this field will simply be ignored.
+        Later, when you modify MM, you can use token.weights for
+        area-weighted model-to-data distance.
+        """
+
         from models.rule import Token
 
-        cloud = self.sample()
+        cloud, weights, measure = self.sample_with_weights()
+
         token = Token(self.estimator.dimension)
         token.points = cloud
         token.trait = self.trait
-        token.measure = self.measure(self.trait)
+        token.measure = measure
         token.action = self.action
+
+        # Optional field for improved MM estimator
+        token.weights = weights
+
         self.estimator.add_token(token)
+
         return cloud

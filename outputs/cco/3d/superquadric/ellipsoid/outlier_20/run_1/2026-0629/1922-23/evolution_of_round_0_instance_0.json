@@ -1,0 +1,26 @@
+[
+  {
+    "episode": 4,
+    "elpased_time": 26.946765184402466,
+    "score": 0.08973446281998562,
+    "trait": "<not serializable>"
+  },
+  {
+    "episode": 52,
+    "elpased_time": 27.055655479431152,
+    "score": 0.22656467981740883,
+    "trait": "<not serializable>"
+  },
+  {
+    "episode": 307,
+    "elpased_time": 28.354573965072632,
+    "score": 0.27914280969912814,
+    "trait": "<not serializable>"
+  },
+  {
+    "episode": 3901,
+    "elpased_time": 261.8605318069458,
+    "score": 0.30890965156009687,
+    "trait": "<not serializable>"
+  }
+]

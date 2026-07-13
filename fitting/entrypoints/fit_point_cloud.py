@@ -3,6 +3,7 @@ import sys
 from copy import deepcopy
 from pathlib import Path
 
+import numpy as np
 import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -74,6 +75,19 @@ def run_experiment(cfg):
     fitter = Fitter(cfg)
     fitter.fit()
     fitter.close()
+
+    # Print universal geometric metrics
+    rec = fitter.record
+    if not np.isnan(rec.chamfer):
+        print(f"\n{'='*50}")
+        print(f"  Best Score (MM):  {rec.best_score:.4f}")
+        print(f"  Chamfer:          {rec.chamfer:.6f}")
+        print(f"  D→M mean:         {rec.d2m:.6f}")
+        print(f"  M→D mean:         {rec.m2d:.6f}")
+        print(f"  F5@0.05:          {rec.f5:.6f}")
+        print(f"  Coverage <0.01:   {rec.coverage_001:.4%}")
+        print(f"  Coverage <0.05:   {rec.coverage_005:.4%}")
+        print(f"{'='*50}\n")
 
 
 def get_estimator_class(cfg):

@@ -101,6 +101,13 @@ class Record(EasyDict):
         self.base_cloud = None
         self.base_color = None
         self.round = None
+        # Universal geometric metrics (computed on best)
+        self.chamfer = float('nan')
+        self.d2m = float('nan')
+        self.m2d = float('nan')
+        self.f5 = float('nan')
+        self.coverage_001 = float('nan')
+        self.coverage_005 = float('nan')
 
     @staticmethod
     def _grid_faces(rows, cols, offset=0):
@@ -301,7 +308,30 @@ class Record(EasyDict):
             self.log_dir + 'final_merged_mesh_uv_trimmed.ply',
         )
 
+    def _compute_geometric_metrics(self):
+        """Compute universal geometric metrics (Chamfer, F5) on best result."""
+        if self.data_cloud is None or self.best_cloud is None:
+            return
+        if len(self.data_cloud) == 0 or len(self.best_cloud) == 0:
+            return
+        from sklearn.neighbors import KDTree as _KDTree
+        data_res = float(self.cfg.get('estimator', {}).get('data_resolution', 0.01))
+        threshold = 5.0 * data_res
+        data = np.asarray(self.data_cloud)
+        model = np.asarray(self.best_cloud)
+        d2m_arr = _KDTree(model).query(data, k=1)[0].ravel().astype(np.float64)
+        m2d_arr = _KDTree(data).query(model, k=1)[0].ravel().astype(np.float64)
+        self.d2m = float(np.mean(d2m_arr))
+        self.m2d = float(np.mean(m2d_arr))
+        self.chamfer = float(self.d2m + self.m2d)
+        precision = float(np.mean(m2d_arr < threshold))
+        recall = float(np.mean(d2m_arr < threshold))
+        self.f5 = float(2.0 * precision * recall / (precision + recall + 1e-8))
+        self.coverage_001 = float(np.mean(d2m_arr < 0.01))
+        self.coverage_005 = float(np.mean(d2m_arr < 0.05))
+
     def close(self):
+        self._compute_geometric_metrics()
         self.plotter.close()
 
     def make_log_dir(self):
@@ -378,21 +408,22 @@ class Record(EasyDict):
             # easydict 需要用string 作为key
             self.evolutions[evolution_key].append(best)
 
-            with open(self.out_json_file_name, 'w') as out_file:
-                log = copy(self)
-                log.plotter = None
-                log.evolutions = 'see the files named evolution_round_{}_of_instance_{}.json'                
-                json.dump(log, out_file, default=json_default, indent=2)
-            with open(f'{self.log_dir}evolution_of_round_{self.round}_instance_{self.token_index}.json', 'w') as out_file:
-                json.dump(self.evolutions[evolution_key], out_file, default=json_default, indent=2)
-
             token = record.best_token
             self.best_estimator = deepcopy(record.best_estimator)
             token.color = np.full(token.points.shape[0], self.token_index)
             self.best_token_set[self.token_index] = token
 
             self.best_cloud = np.vstack((self.base_cloud, token.points))
-            self.best_color = np.concatenate((self.base_color, token.color))            
+            self.best_color = np.concatenate((self.base_color, token.color))
+            self._compute_geometric_metrics()
+
+            with open(self.out_json_file_name, 'w') as out_file:
+                log = copy(self)
+                log.plotter = None
+                log.evolutions = 'see the files named evolution_round_{}_of_instance_{}.json'
+                json.dump(log, out_file, default=json_default, indent=2)
+            with open(f'{self.log_dir}evolution_of_round_{self.round}_instance_{self.token_index}.json', 'w') as out_file:
+                json.dump(self.evolutions[evolution_key], out_file, default=json_default, indent=2)            
 
             model_image = None
             if self.verbose:

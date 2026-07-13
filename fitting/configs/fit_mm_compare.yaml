@@ -4,11 +4,11 @@
 
 task_type: '3d'
 run_id: 1
-data_file: '/home/m25lll/code/Fiting/fitting/datasets/synthetic/saddle_3k.ply'
+data_file: '/home/m25lll/code/superquadic_data/shapes/ellipsoid/outlier_20.ply'
 
-# ── 模型: 双三次NURBS张量积曲面 (16×16=256控制点×4=1024D) ──
+# ── 模型: 超椭球体 (16×16=256控制点×4=1024D) ──
 model:
-  type: 'nurbs_surface'
+  type: 'superquadric'
   num_ctrl_u: 8
   num_ctrl_v: 8
   degree_u: 3
@@ -43,10 +43,10 @@ estimator:
 
 # ── 优化器 ──
 fitter:
-  algo_name: 'memetic'
+  algo_name: 'cco'
   num_instances: 1
 
-  max_episode: 30000                # 256D，够用
+  max_episode: 50000                # 256D，够用
 
   # Memetic (NL-SHADE + Adam refiner)
   gd_lr: 0.01
