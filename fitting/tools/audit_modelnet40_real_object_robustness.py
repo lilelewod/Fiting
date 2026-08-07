@@ -47,7 +47,10 @@ def main() -> None:
         errors.append("fewer than five categories")
 
     for case in manifest.get("cases", []):
-        case_root = Path(case["directory"])
+        # The manifest retains the original preparation path for provenance.
+        # Always resolve through the caller-supplied root so the audit remains
+        # portable across Windows workstations and Linux servers.
+        case_root = root / case["category"] / case["case"]
         metadata = json.loads((case_root / "metadata.json").read_text(encoding="utf-8"))
         clouds = {
             key: read_ply(case_root / item["file"])
