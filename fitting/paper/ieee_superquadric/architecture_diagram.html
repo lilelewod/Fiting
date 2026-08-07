@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="zh-CN" data-lang="both">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>鲁棒程序化模型拟合架构 / Robust Procedural Model Fitting Architecture</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #657087;
+      --line: #cbd3df;
+      --paper: #ffffff;
+      --canvas: #eef2f7;
+      --blue: #2864dc;
+      --blue-soft: #edf4ff;
+      --teal: #087f76;
+      --teal-soft: #e9faf7;
+      --violet: #6656d9;
+      --violet-soft: #f1efff;
+      --coral: #bf4b45;
+      --coral-soft: #fff1ef;
+      --amber: #9a6200;
+      --amber-soft: #fff7df;
+      --green: #36734b;
+      --green-soft: #edf8f0;
+      --shadow: 0 18px 55px rgba(28, 42, 66, .12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 5%, rgba(40, 100, 220, .08), transparent 27rem),
+        var(--canvas);
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+    }
+
+    button { font: inherit; }
+
+    .shell {
+      width: min(1540px, calc(100% - 32px));
+      margin: 24px auto;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 12px;
+    }
+
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(21px, 2.25vw, 34px);
+      line-height: 1.18;
+      letter-spacing: -.025em;
+    }
+
+    .language-switch {
+      display: inline-flex;
+      flex: 0 0 auto;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid #c7d0dd;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .76);
+    }
+
+    .language-switch button {
+      min-height: 36px;
+      padding: 7px 12px;
+      border: 0;
+      border-radius: 7px;
+      color: #566176;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .language-switch button[aria-pressed="true"] {
+      color: #fff;
+      background: var(--ink);
+      box-shadow: 0 3px 9px rgba(23, 32, 51, .18);
+    }
+
+    .figure {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(20px, 2.5vw, 40px);
+      border: 1px solid #d6dde7;
+      border-radius: 18px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .figure::before {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background: linear-gradient(90deg, var(--coral), var(--blue) 34%, var(--teal) 67%, var(--violet));
+      content: "";
+    }
+
+    .protocol {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 22px;
+      padding: 9px 14px;
+      border: 1px solid #d7dee8;
+      border-radius: 8px;
+      color: #4d596e;
+      background: #f8fafc;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .protocol strong { color: var(--ink); }
+    .dot { color: #9aa5b6; }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: minmax(154px, .95fr) 42px minmax(150px, .82fr) 42px minmax(275px, 1.6fr) 42px minmax(190px, 1.05fr) 42px minmax(180px, 1fr);
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .stage,
+    .core {
+      position: relative;
+      min-width: 0;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .stage {
+      display: flex;
+      min-height: 350px;
+      flex-direction: column;
+      padding: 18px 16px;
+    }
+
+    .stage-input { border-color: #e4aaa6; background: var(--coral-soft); }
+    .stage-preprocess { background: #f8fafc; }
+    .stage-search { border-color: #b9b2ef; background: var(--violet-soft); }
+    .stage-output { border-color: #acd0b6; background: var(--green-soft); }
+
+    .step-index {
+      display: grid;
+      width: 29px;
+      height: 29px;
+      margin-bottom: 14px;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--ink);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .stage h2,
+    .core h2,
+    .module h3 {
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    .stage h2,
+    .core h2 { font-size: 18px; }
+    .module h3 { font-size: 15px; }
+
+    .en {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: .74em;
+      font-weight: 650;
+      letter-spacing: .005em;
+    }
+
+    html[data-lang="zh"] .en,
+    html[data-lang="en"] .zh { display: none !important; }
+
+    html[data-lang="en"] .en {
+      margin-top: 0;
+      color: inherit;
+      font-size: 1em;
+      font-weight: inherit;
+    }
+
+    .stage-copy {
+      margin: 10px 0 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: auto;
+    }
+
+    .tag {
+      display: inline-flex;
+      flex-direction: column;
+      min-height: 31px;
+      justify-content: center;
+      padding: 6px 9px;
+      border: 1px solid rgba(23, 32, 51, .13);
+      border-radius: 7px;
+      color: #3e485b;
+      background: rgba(255, 255, 255, .74);
+      font-size: 11px;
+      font-weight: 750;
+      line-height: 1.15;
+    }
+
+    .tag .en { font-size: 9px; }
+
+    .flow-arrow {
+      display: grid;
+      place-items: center;
+      color: #748199;
+      font-size: 29px;
+      font-weight: 300;
+    }
+
+    .core {
+      min-height: 350px;
+      padding: 14px;
+      border-color: #8fb0ed;
+      background: #f7faff;
+    }
+
+    .core-heading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 2px 2px 12px;
+    }
+
+    .core-heading .step-index { margin: 0; background: var(--blue); }
+
+    .modules {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .module {
+      position: relative;
+      padding: 12px 12px 11px 43px;
+      border: 1px solid #bfd0ed;
+      border-radius: 9px;
+      background: var(--paper);
+    }
+
+    .module::before {
+      position: absolute;
+      top: 13px;
+      left: 13px;
+      display: grid;
+      width: 22px;
+      height: 22px;
+      place-items: center;
+      border-radius: 5px;
+      color: #fff;
+      background: var(--blue);
+      font-size: 11px;
+      font-weight: 850;
+      content: attr(data-letter);
+    }
+
+    .module p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .module-sampling { border-color: #9edbd6; background: var(--teal-soft); }
+    .module-sampling::before { background: var(--teal); }
+    .module-estimator { border-color: #e1c883; background: var(--amber-soft); }
+    .module-estimator::before { background: var(--amber); }
+
+    .optimizer-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .optimizer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 7px;
+      padding: 9px 10px;
+      border: 1px solid rgba(102, 86, 217, .22);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, .76);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .optimizer.primary {
+      color: #fff;
+      border-color: var(--violet);
+      background: var(--violet);
+    }
+
+    .optimizer small {
+      color: inherit;
+      opacity: .72;
+      font-size: 9px;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .result {
+      margin: 15px 0 11px;
+      padding: 12px;
+      border: 1px solid rgba(54, 115, 75, .24);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .78);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .metric-list {
+      display: grid;
+      gap: 6px;
+      margin-top: auto;
+    }
+
+    .metric {
+      padding: 7px 9px;
+      border-left: 3px solid var(--green);
+      color: #435347;
+      background: rgba(255, 255, 255, .62);
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+
+    .loop {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      width: 54%;
+      margin: 18px 15% 0 auto;
+      color: #5b6680;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .loop-line {
+      height: 14px;
+      border-bottom: 1.5px dashed #8f9aae;
+    }
+
+    .loop-label {
+      padding: 0 9px;
+      text-align: center;
+    }
+
+    .loop-return {
+      text-align: right;
+    }
+
+    .loop-return::after {
+      margin-left: 6px;
+      color: var(--violet);
+      font-size: 18px;
+      content: "↶";
+    }
+
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 24px;
+      margin-top: 22px;
+      padding-top: 16px;
+      border-top: 1px solid #e0e5ec;
+    }
+
+    .caption {
+      margin: 0;
+      max-width: 980px;
+      color: #505c70;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .caption strong { color: var(--ink); }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 12px;
+      color: #5d687c;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .swatch { width: 10px; height: 10px; border-radius: 3px; background: var(--blue); }
+    .swatch.fixed { background: #cbd3df; }
+    .swatch.external { border: 1px dashed var(--green); background: transparent; }
+
+    @media (max-width: 1180px) {
+      .pipeline {
+        grid-template-columns: 1fr 34px 1fr 34px 1.45fr;
+        row-gap: 16px;
+      }
+      .stage-search { grid-column: 1 / 3; min-height: 280px; }
+      .pipeline > .flow-arrow:nth-of-type(4) { grid-column: 3; }
+      .stage-output { grid-column: 4 / 6; min-height: 280px; }
+      .stage, .core { min-height: 330px; }
+      .loop { width: 82%; margin-right: 0; }
+    }
+
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 18px, 620px); margin: 10px auto; }
+      .toolbar { align-items: flex-start; flex-direction: column; }
+      .language-switch { width: 100%; }
+      .language-switch button { flex: 1; padding-inline: 7px; }
+      .figure { padding: 20px 14px; border-radius: 12px; }
+      .protocol { align-items: flex-start; flex-direction: column; gap: 5px; text-align: left; }
+      .protocol .dot { display: none; }
+      .pipeline { display: flex; flex-direction: column; }
+      .stage, .core { min-height: 0; }
+      .flow-arrow { height: 38px; transform: rotate(90deg); }
+      .stage-search, .stage-output { min-height: 0; }
+      .loop { width: 100%; margin: 16px 0 0; }
+      .bottom-row { grid-template-columns: 1fr; }
+      .legend { justify-content: flex-start; }
+    }
+
+    @media print {
+      @page { size: landscape; margin: 7mm; }
+      body { background: #fff; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .shell { width: 100%; margin: 0; }
+      .toolbar { margin-bottom: 7px; }
+      .language-switch { display: none; }
+      .figure { padding: 20px; border-radius: 0; box-shadow: none; }
+      .stage, .core { min-height: 310px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="toolbar">
+      <div>
+        <p class="eyebrow">Figure 1 · Architecture Draft</p>
+        <h1>
+          <span class="zh">鲁棒程序化模型拟合架构</span>
+          <span class="en">Robust Procedural Model Fitting Architecture</span>
+        </h1>
+      </div>
+      <nav class="language-switch" aria-label="图示语言 / Diagram language">
+        <button type="button" data-language="both" aria-pressed="true">中英双语</button>
+        <button type="button" data-language="zh" aria-pressed="false">中文</button>
+        <button type="button" data-language="en" aria-pressed="false">English</button>
+      </nav>
+    </header>
+
+    <article class="figure" aria-label="鲁棒程序化模型拟合流程图">
+      <div class="protocol">
+        <strong>
+          <span class="zh">统一实验协议</span>
+          <span class="en">Unified experimental protocol</span>
+        </strong>
+        <span class="dot">•</span>
+        <span><span class="zh">相同参数边界</span><span class="en">Identical parameter bounds</span></span>
+        <span class="dot">•</span>
+        <span><span class="zh">配对随机种子</span><span class="en">Paired random seeds</span></span>
+        <span class="dot">•</span>
+        <span><span class="zh">相同函数评估预算</span><span class="en">Equal function-evaluation budget</span></span>
+      </div>
+
+      <section class="pipeline" aria-label="Fitting pipeline">
+        <section class="stage stage-input">
+          <span class="step-index">01</span>
+          <h2><span class="zh">不完美观测</span><span class="en">Imperfect Observation</span></h2>
+          <p class="stage-copy">
+            <span class="zh">来自合成数据或真实扫描的三维点云。</span>
+            <span class="en">3D point clouds from synthetic data or real scans.</span>
+          </p>
+          <div class="tag-list">
+            <span class="tag"><span class="zh">高斯噪声</span><span class="en">Gaussian noise</span></span>
+            <span class="tag"><span class="zh">离群点</span><span class="en">Outliers</span></span>
+            <span class="tag"><span class="zh">随机缺失</span><span class="en">Missing data</span></span>
+            <span class="tag"><span class="zh">局部遮挡</span><span class="en">Occlusion</span></span>
+          </div>
+        </section>
+
+        <div class="flow-arrow" aria-hidden="true">→</div>
+
+        <section class="stage stage-preprocess">
+          <span class="step-index">02</span>
+          <h2><span class="zh">数据预处理</span><span class="en">Data Preprocessing</span></h2>
+          <p class="stage-copy">
+            <span class="zh">统一坐标尺度，并定义可搜索的参数空间。</span>
+            <span class="en">Normalize the coordinate scale and define the searchable parameter space.</span>
+          </p>
+          <div class="tag-list">
+            <span class="tag"><span class="zh">中心与尺度归一化</span><span class="en">Center &amp; scale</span></span>
+            <span class="tag"><span class="zh">点数/分辨率控制</span><span class="en">Point budget</span></span>
+            <span class="tag"><span class="zh">参数上下界</span><span class="en">Parameter bounds</span></span>
+          </div>
+        </section>
+
+        <div class="flow-arrow" aria-hidden="true">→</div>
+
+        <section class="core">
+          <div class="core-heading">
+            <span class="step-index">03</span>
+            <h2><span class="zh">模块化拟合核心</span><span class="en">Modular Fitting Core</span></h2>
+          </div>
+          <div class="modules">
+            <section class="module" data-letter="A">
+              <h3><span class="zh">程序化模型规则</span><span class="en">Procedural Model Rule</span></h3>
+              <p>
+                <span class="zh">字符 · PMF 圆柱 · 带位姿超二次曲面</span>
+                <span class="en">Character · PMF cylinder · Posed superquadric</span>
+              </p>
+            </section>
+            <section class="module module-sampling" data-letter="B">
+              <h3><span class="zh">模型生成与采样</span><span class="en">Model Generation &amp; Sampling</span></h3>
+              <p>
+                <span class="zh">均匀参数采样 / 面积加权采样</span>
+                <span class="en">Uniform parametric / area-weighted sampling</span>
+              </p>
+            </section>
+            <section class="module module-estimator" data-letter="C">
+              <h3><span class="zh">鲁棒相似度估计</span><span class="en">Robust Similarity Estimation</span></h3>
+              <p>
+                <span class="zh">MM · WMM · 面积权重 · 可选覆盖率项</span>
+                <span class="en">MM · WMM · area weights · optional coverage term</span>
+              </p>
+            </section>
+          </div>
+        </section>
+
+        <div class="flow-arrow" aria-hidden="true">→</div>
+
+        <section class="stage stage-search">
+          <span class="step-index">04</span>
+          <h2><span class="zh">共享优化器接口</span><span class="en">Shared Optimizer Interface</span></h2>
+          <p class="stage-copy">
+            <span class="zh">候选参数由同一目标函数公平评价。</span>
+            <span class="en">Candidate parameters are evaluated by the same objective.</span>
+          </p>
+          <div class="optimizer-list">
+            <div class="optimizer primary"><span>CCO</span><small><span class="zh">采用的主优化器</span><span class="en">adopted primary optimizer</span></small></div>
+            <div class="optimizer"><span>CS</span><small><span class="zh">原始核心基线</span><span class="en">original core baseline</span></small></div>
+            <div class="optimizer"><span>PSO</span><small><span class="zh">对比算法</span><span class="en">comparator</span></small></div>
+            <div class="optimizer"><span>DE</span><small><span class="zh">对比算法</span><span class="en">comparator</span></small></div>
+          </div>
+        </section>
+
+        <div class="flow-arrow" aria-hidden="true">→</div>
+
+        <section class="stage stage-output">
+          <span class="step-index">05</span>
+          <h2><span class="zh">拟合结果与评估</span><span class="en">Fit &amp; Evaluation</span></h2>
+          <div class="result">
+            <span class="zh">最优参数 θ* + 干净模型点云</span>
+            <span class="en">Best parameters θ* + clean model cloud</span>
+          </div>
+          <p class="stage-copy">
+            <span class="zh">使用独立的干净参考进行外部评价，避免训练目标与报告指标混淆。</span>
+            <span class="en">Evaluate against an independent clean reference, separating optimization from reporting.</span>
+          </p>
+          <div class="metric-list">
+            <div class="metric">Chamfer distance</div>
+            <div class="metric">F-score</div>
+            <div class="metric"><span class="zh">参数误差 / 成功率</span><span class="en">Parameter error / success rate</span></div>
+          </div>
+        </section>
+      </section>
+
+      <div class="loop" aria-label="Iterative optimization loop">
+        <div class="loop-line"></div>
+        <div class="loop-label">
+          <span class="zh">相似度得分 S(θ) → 更新候选参数</span>
+          <span class="en">Similarity S(θ) → update candidates</span>
+        </div>
+        <div class="loop-return"><span class="zh">迭代反馈</span><span class="en">iterative feedback</span></div>
+      </div>
+
+      <footer class="bottom-row">
+        <p class="caption">
+          <strong><span class="zh">图 1.</span><span class="en">Fig. 1.</span></strong>
+          <span class="zh">鲁棒程序化模型拟合总体架构。模型规则、采样/估计模块和搜索算法可独立替换；所有优化器共享参数边界、随机种子与函数评估预算，以保证公平对比。</span>
+          <span class="en">Overall architecture of robust procedural model fitting. The model rule, sampling/estimation modules, and search algorithms are independently replaceable; all optimizers share bounds, seeds, and function-evaluation budgets for fair comparison.</span>
+        </p>
+        <div class="legend" aria-label="Legend">
+          <span><i class="swatch"></i><span class="zh">可替换模块</span><span class="en">Replaceable module</span></span>
+          <span><i class="swatch fixed"></i><span class="zh">固定协议</span><span class="en">Fixed protocol</span></span>
+          <span><i class="swatch external"></i><span class="zh">外部评估</span><span class="en">External evaluation</span></span>
+        </div>
+      </footer>
+    </article>
+  </main>
+
+  <script>
+    const root = document.documentElement;
+    const buttons = [...document.querySelectorAll('[data-language]')];
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const language = button.dataset.language;
+        root.dataset.lang = language;
+        root.lang = language === 'en' ? 'en' : 'zh-CN';
+        buttons.forEach((item) => {
+          item.setAttribute('aria-pressed', String(item === button));
+        });
+      });
+    });
+  </script>
+</body>
+</html>

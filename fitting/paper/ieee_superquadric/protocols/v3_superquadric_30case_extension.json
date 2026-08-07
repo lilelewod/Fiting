@@ -1,0 +1,75 @@
+{
+  "status": "frozen before cases 009--029 Guided-PSO runs",
+  "registered_date": "2026-07-27",
+  "purpose": "Extend the preregistered nine-case robustness block to all 30 independently generated randomized superquadrics without changing the estimator, optimizer, or evaluation protocol.",
+  "data_root": "C:/code/superquadic_data/v3_randomized",
+  "cases": [
+    "case_000", "case_001", "case_002", "case_003", "case_004",
+    "case_005", "case_006", "case_007", "case_008", "case_009",
+    "case_010", "case_011", "case_012", "case_013", "case_014",
+    "case_015", "case_016", "case_017", "case_018", "case_019",
+    "case_020", "case_021", "case_022", "case_023", "case_024",
+    "case_025", "case_026", "case_027", "case_028", "case_029"
+  ],
+  "case_selection": "All 30 cases generated before fitting are included. Cases 000--008 reuse the first three seeds from the completed five-seed matrix; cases 009--029 are new confirmatory fits.",
+  "conditions": {
+    "clean": {"file": "clean.ply"},
+    "noise_1pct_diag": {"file": "noise_1pct_diag.ply"},
+    "outlier_20": {"file": "outlier_20.ply"},
+    "missing_80": {"file": "missing_80.ply"},
+    "occlusion_cap_80": {"file": "occlusion_cap_80.ply"}
+  },
+  "guided_pso": {
+    "paired_base_seeds": [20260716, 20260717, 20260718],
+    "population_size": 16,
+    "max_evaluations": 10000,
+    "guided_fraction": 0.75,
+    "guided_jitter": 0.04,
+    "extent_quantile": 0.005,
+    "support_neighbors": 8,
+    "initialization_support_fraction": {
+      "clean": 1.0,
+      "noise_1pct_diag": 1.0,
+      "outlier_20": 0.75,
+      "missing_80": 1.0,
+      "occlusion_cap_80": 1.0
+    },
+    "estimator_resolution": "Use each case's clean-derived data_resolution and model_resolution unchanged for every condition.",
+    "estimator_density_preprocessing": "none; robust support affects initialization only"
+  },
+  "reuse_completed": {
+    "cases": [
+      "case_000", "case_001", "case_002", "case_003", "case_004",
+      "case_005", "case_006", "case_007", "case_008"
+    ],
+    "clean_root": "C:/code/Fiting/outputs/optimizer_comparison/v3_stratified9_clean_guided_pso_1seed_20260716",
+    "robustness_root": "C:/code/Fiting/outputs/optimizer_comparison/v3_stratified9_robustness_guided_pso_5seeds_20260721"
+  },
+  "ems": {
+    "implementation": "bmlklwx/EMS-superquadric_fitting",
+    "implementation_commit": "5a213d46e8b013b5a153f5aa914b0925ee517af7",
+    "outlier_prior": 0.1,
+    "max_iteration_em": 20,
+    "max_optimization_iterations": 3,
+    "max_switches": 2,
+    "adaptive_upper_bound": false,
+    "existing_root": "C:/code/Fiting/outputs/ems_baseline/v3_randomized_fixedprior01"
+  },
+  "independent_evaluation": {
+    "reference": "analytic area-uniform surface generated from trait.json",
+    "reference_points": 20000,
+    "model_points": 20000,
+    "grid_resolution": 256,
+    "reference_seed": 20260716,
+    "model_seed": 20260717,
+    "chamfer_success_threshold": 0.05,
+    "fscore_distance_threshold": 0.05
+  },
+  "reporting": {
+    "stochastic_unit": "Take the median of three paired seeds within each case before case-level inference.",
+    "robustness_unit": "Pair each corrupted case median with the same case's clean median.",
+    "ems_comparison_unit": "Pair each Guided-PSO case median with one deterministic EMS fit.",
+    "statistics": "Exact two-sided Wilcoxon signed-rank over 30 independent cases.",
+    "failure_rule": "Random missingness and spatially coherent cap occlusion remain separate conditions."
+  }
+}

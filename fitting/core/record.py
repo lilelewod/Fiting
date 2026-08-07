@@ -106,6 +106,7 @@ class Record(EasyDict):
         self.d2m = float('nan')
         self.m2d = float('nan')
         self.f5 = float('nan')
+        self.metric_threshold = float('nan')
         self.coverage_001 = float('nan')
         self.coverage_005 = float('nan')
 
@@ -317,6 +318,7 @@ class Record(EasyDict):
         from sklearn.neighbors import KDTree as _KDTree
         data_res = float(self.cfg.get('estimator', {}).get('data_resolution', 0.01))
         threshold = 5.0 * data_res
+        self.metric_threshold = threshold
         data = np.asarray(self.data_cloud)
         model = np.asarray(self.best_cloud)
         d2m_arr = _KDTree(model).query(data, k=1)[0].ravel().astype(np.float64)
@@ -333,6 +335,15 @@ class Record(EasyDict):
     def close(self):
         self._compute_geometric_metrics()
         self.plotter.close()
+        # Optimizers attach final counters (for example num_evaluations) only
+        # after their search loop.  Persist once more on close so record.json
+        # contains the final budget and final geometric metrics rather than the
+        # state from the last incumbent update.
+        with open(self.out_json_file_name, 'w') as out_file:
+            log = copy(self)
+            log.plotter = None
+            log.evolutions = 'see the files named evolution_round_{}_of_instance_{}.json'
+            json.dump(log, out_file, default=json_default, indent=2)
 
     def make_log_dir(self):
         root_dir = self.cfg['record'].get('root_dir', 'ouputs')

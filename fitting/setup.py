@@ -12,6 +12,11 @@ setup(
         'plyfile',
         'PyYAML',
         'scikit-learn',
+        'scipy',
         'torch',
     ],
+    extras_require={
+        'test': ['pytest', 'pypdf'],
+        'paper': ['matplotlib', 'Pillow', 'pypdf'],
+    },
 )

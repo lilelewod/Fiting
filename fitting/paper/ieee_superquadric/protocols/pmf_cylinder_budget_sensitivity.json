@@ -1,0 +1,64 @@
+{
+  "status": "pre-registered; final backend selected by a paired pre-start timing gate before any budget-study run",
+  "registered_date": "2026-07-21",
+  "backend_selection": {
+    "date": "2026-07-21",
+    "stage": "completed before the formal budget output directory existed",
+    "candidate_backend": "torch_cuda",
+    "equivalence_gate": "outputs/environment/cuda_nn_equivalence_audit.json",
+    "paired_end_to_end_gate": "outputs/environment/pmf_budget_backend_benchmark_audit.json",
+    "benchmark_protocol": "one new paired seed, clean and outlier_50, PSO and CS, population 80, exactly 8080 FE",
+    "decision": "sklearn",
+    "reason": "CPU KDTree produced identical fitted metrics and was faster end-to-end in all four paired cells; CUDA brute-force cdist is not advantageous for these low-dimensional 2048/4096-point searches.",
+    "independent_metrics": "CPU KDTree and strictly recomputed"
+  },
+  "purpose": "Determine whether the PSO-CS difference is caused by search-budget limitations.",
+  "dataset": {
+    "root": "datasets/pmf_cylinder",
+    "provenance": "PMF-style reconstruction; not the original D5/D6 point clouds",
+    "conditions": [
+      "clean",
+      "outlier_50"
+    ]
+  },
+  "algorithms": [
+    "pso",
+    "cs"
+  ],
+  "population_size": 80,
+  "num_envs": 1,
+  "nearest_neighbor_backend": "sklearn",
+  "paired_base_seeds": [
+    20260801,
+    20260802,
+    20260803,
+    20260804,
+    20260805
+  ],
+  "evaluation_budgets": [
+    50000,
+    199920,
+    499920
+  ],
+  "budget_note": "For population 80, exact fairness requires FE = 80 + k * 160. Values 199920 and 499920 are the exact compatible budgets immediately below 200000 and 500000.",
+  "evaluation": {
+    "reference": "datasets/pmf_cylinder/clean.ply",
+    "model_grid": [
+      64,
+      32
+    ],
+    "distance_threshold_neighbor_factor": 5.0,
+    "success_chamfer_floor_factor": 2.0,
+    "success_fscore": 0.9
+  },
+  "reporting": {
+    "primary_metrics": [
+      "clean-reference Chamfer",
+      "clean-reference F-score",
+      "success rate",
+      "wall time"
+    ],
+    "paired_analysis": "PSO and CS are paired by base seed within each condition and FE budget.",
+    "selection_rule": "All five pre-registered seeds are retained; failed runs are not selectively rerun."
+  }
+}

@@ -1,0 +1,55 @@
+# PMF-style M5 partial-cylinder robustness benchmark.
+task_type: '3d'
+run_id: 1
+data_file: 'datasets/pmf_cylinder/clean.ply'
+
+model:
+  type: 'pmf_cylinder'
+  parameter_bounds:
+    center_lb: [-3.0, -3.0, -5.0]
+    center_ub: [3.0, 3.0, 1.0]
+    radius_lb: 0.5
+    radius_ub: 4.0
+    height_lb: 2.0
+    height_ub: 10.0
+    span_lb: 0.3490658504
+    span_ub: 6.2831853072
+
+device:
+  train_device: 'cuda:0'
+  cuda_deterministic: true
+seeds: null
+
+estimator:
+  type: 'mm'
+  data_resolution: 'auto'
+  model_resolution: 'auto'
+  regularization_factor: 0.5
+  incremental_coverage: false
+  early_rejection: true
+  use_faiss: true
+
+fitter:
+  algo_name: 'cco'
+  num_instances: 1
+  num_envs: 1
+  episodes_per_env: 80
+  # 50000 / 80 = 625, an odd population multiple: exact for CCO and CS.
+  # The larger population/budget is needed to reach the narrow high-score basin
+  # of the partial cylinder under massive gross outliers.
+  max_episode: 50000
+
+collector:
+  name: 'hybrid'
+  num_episodes_per_rollout: 4
+  num_rollouts: 2
+  parallel: true
+  context: 'spawn'
+  reinforcement_episode_size: 30
+  evaluation_episode_size: 10
+
+record:
+  pulse_size: 500
+  visualization: null
+  use_thread_time: false
+  verbose: true

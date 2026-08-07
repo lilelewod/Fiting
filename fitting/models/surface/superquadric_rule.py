@@ -58,8 +58,8 @@ class SuperquadricRule:
     def __init__(
         self,
         estimator=None,
-        n_eta=96,
-        n_omega=96,
+        n_eta=None,
+        n_omega=None,
         shape_min=0.10,
         shape_max=2.50,
         pole_eps=1e-4,
@@ -68,8 +68,15 @@ class SuperquadricRule:
         self.trait = SuperquadricTrait()
         self.action = None
 
-        self.n_eta = int(n_eta)
-        self.n_omega = int(n_omega)
+        model_cfg = {} if estimator is None else estimator.cfg.get("model", {})
+        self.n_eta = int(model_cfg.get("sample_eta", 96) if n_eta is None else n_eta)
+        self.n_omega = int(model_cfg.get("sample_omega", 96) if n_omega is None else n_omega)
+        # Ablation switch: keep the same angular samples and geometric surface
+        # measure, but optionally replace local-area quadrature weights with a
+        # uniform mean in the model-to-data distance.
+        self.use_area_weights = bool(model_cfg.get("use_area_weights", True))
+        if self.n_eta < 8 or self.n_omega < 5:
+            raise ValueError("superquadric sampling requires sample_eta >= 8 and sample_omega >= 5")
         self.shape_min = float(shape_min)
         self.shape_max = float(shape_max)
         self.pole_eps = float(pole_eps)
@@ -238,34 +245,130 @@ class SuperquadricRule:
         n_eta, n_omega, _ = grid.shape
         weights = np.zeros((n_eta, n_omega), dtype=np.float32)
 
-        for i in range(n_eta):
-            i_next = (i + 1) % n_eta
+        # Vectorized periodic quad mesh. Each quad is split into two triangles,
+        # and one third of each triangle's area is assigned to every vertex.
+        next_eta = np.roll(grid, -1, axis=0)
+        p00 = grid[:, :-1]
+        p10 = next_eta[:, :-1]
+        p01 = grid[:, 1:]
+        p11 = next_eta[:, 1:]
+        share1 = cls._triangle_area(p00, p10, p01) / 3.0
+        share2 = cls._triangle_area(p10, p11, p01) / 3.0
 
-            for j in range(n_omega - 1):
-                p00 = grid[i, j]
-                p10 = grid[i_next, j]
-                p01 = grid[i, j + 1]
-                p11 = grid[i_next, j + 1]
-
-                # Two triangles:
-                #   tri1: p00, p10, p01
-                #   tri2: p10, p11, p01
-                area1 = cls._triangle_area(p00, p10, p01)
-                area2 = cls._triangle_area(p10, p11, p01)
-
-                share1 = area1 / 3.0
-                share2 = area2 / 3.0
-
-                weights[i, j] += share1
-                weights[i_next, j] += share1
-                weights[i, j + 1] += share1
-
-                weights[i_next, j] += share2
-                weights[i_next, j + 1] += share2
-                weights[i, j + 1] += share2
+        weights[:, :-1] += share1
+        weights[:, :-1] += np.roll(share1, 1, axis=0)
+        weights[:, 1:] += share1
+        weights[:, :-1] += np.roll(share2, 1, axis=0)
+        weights[:, 1:] += np.roll(share2, 1, axis=0)
+        weights[:, 1:] += share2
 
         total_area = float(weights.sum())
         return weights, total_area
+
+    @classmethod
+    def _surface_triangles(cls, grid):
+        """Convert a periodic superquadric parameter grid to surface triangles."""
+        grid = np.asarray(grid, dtype=np.float64)
+        if grid.ndim != 3 or grid.shape[2] != 3:
+            raise ValueError("grid must have shape (n_eta, n_omega, 3)")
+        if grid.shape[0] < 3 or grid.shape[1] < 2:
+            raise ValueError("grid is too small to form a closed surface mesh")
+
+        next_eta = np.roll(grid, -1, axis=0)
+        p00 = grid[:, :-1]
+        p10 = next_eta[:, :-1]
+        p01 = grid[:, 1:]
+        p11 = next_eta[:, 1:]
+        triangles = np.concatenate(
+            (
+                np.stack((p00, p10, p01), axis=-2),
+                np.stack((p10, p11, p01), axis=-2),
+            ),
+            axis=0,
+        )
+        return triangles.reshape(-1, 3, 3)
+
+    @classmethod
+    def sample_surface_uniform(
+        cls,
+        trait,
+        count,
+        seed=0,
+        n_eta=256,
+        n_omega=256,
+        pole_eps=1e-4,
+    ):
+        """Sample a posed superquadric approximately uniformly by surface area.
+
+        A high-resolution deterministic parameter grid is triangulated first.
+        Triangles are selected in proportion to their physical area, followed
+        by uniform barycentric sampling inside the selected triangles.  This is
+        intended for dataset generation, visualization and external metrics;
+        optimization should keep using ``sample_with_weights``.
+        """
+        count = int(count)
+        n_eta = int(n_eta)
+        n_omega = int(n_omega)
+        if count <= 0:
+            raise ValueError("count must be positive")
+        if n_eta < 8 or n_omega < 5:
+            raise ValueError("uniform surface sampling requires n_eta >= 8 and n_omega >= 5")
+
+        scale = np.asarray(trait.scale, dtype=np.float64).reshape(3)
+        shape = np.asarray(trait.shape, dtype=np.float64).reshape(2)
+        center = np.asarray(trait.center, dtype=np.float64).reshape(3)
+        rotation = np.asarray(trait.rot_matrix, dtype=np.float64).reshape(3, 3)
+        if not all(np.all(np.isfinite(value)) for value in (scale, shape, center, rotation)):
+            raise ValueError("trait contains non-finite values")
+        if np.any(scale <= 0.0) or np.any(shape <= 0.0):
+            raise ValueError("trait scale and shape parameters must be positive")
+
+        # Evaluation/data generation uses float64 independently of the float32
+        # optimization grid so the standalone dataset generator and fitting
+        # project produce byte-identical samples under the same protocol.
+        eta = np.linspace(-np.pi, np.pi, n_eta, endpoint=False, dtype=np.float64)
+        omega = np.linspace(
+            -np.pi / 2.0 + pole_eps,
+            np.pi / 2.0 - pole_eps,
+            n_omega,
+            endpoint=True,
+            dtype=np.float64,
+        )
+        eta_g, omega_g = np.meshgrid(eta, omega, indexing="ij")
+        signed_power = lambda values, exponent: np.sign(values) * np.abs(values) ** exponent
+        c_eta = signed_power(np.cos(eta_g), shape[0])
+        s_eta = signed_power(np.sin(eta_g), shape[0])
+        c_omega = signed_power(np.cos(omega_g), shape[1])
+        s_omega = signed_power(np.sin(omega_g), shape[1])
+        local_grid = np.stack(
+            (
+                scale[0] * c_eta * c_omega,
+                scale[1] * s_eta * c_omega,
+                scale[2] * s_omega,
+            ),
+            axis=-1,
+        )
+        posed_grid = np.asarray(local_grid, dtype=np.float64) @ rotation.T + center
+        triangles = cls._surface_triangles(posed_grid)
+        areas = cls._triangle_area(triangles[:, 0], triangles[:, 1], triangles[:, 2])
+        valid = np.isfinite(areas) & (areas > np.finfo(np.float64).eps)
+        if not np.any(valid):
+            raise ValueError("superquadric mesh contains no positive-area triangles")
+        triangles = triangles[valid]
+        areas = np.asarray(areas[valid], dtype=np.float64)
+        probabilities = areas / areas.sum()
+
+        rng = np.random.default_rng(seed)
+        chosen = rng.choice(triangles.shape[0], size=count, replace=True, p=probabilities)
+        selected = triangles[chosen]
+        root_u = np.sqrt(rng.random(count))
+        v = rng.random(count)
+        points = (
+            (1.0 - root_u)[:, None] * selected[:, 0]
+            + (root_u * (1.0 - v))[:, None] * selected[:, 1]
+            + (root_u * v)[:, None] * selected[:, 2]
+        )
+        return points.astype(np.float32)
 
     @classmethod
     def _spherical_product(
@@ -394,7 +497,7 @@ class SuperquadricRule:
         token.action = self.action
 
         # Optional field for improved MM estimator
-        token.weights = weights
+        token.weights = weights if self.use_area_weights else None
 
         self.estimator.add_token(token)
 

@@ -71,6 +71,7 @@ class Fitter:
         data_cloud = self.collector.launch()
         self.record = Record(cfg, dimension=data_cloud.shape[1])
         self.record.data_cloud = data_cloud
+        self.record.action_dim = self.action_dim
 
     def estimate(self, solutions):
         assert solutions.shape[0] == self.population_size
@@ -115,17 +116,56 @@ class Fitter:
             for i in range(n):
                 nest[i, :] = np.clip(warm_action + warm_noise * np.random.randn(dim), -1.0, 1.0)
             print(f'[CS] warm-start from action (noise={warm_noise}), norm={np.linalg.norm(warm_action):.3f}')
+        elif (
+            self.cfg['fitter'].get('template_guided_initialization', False)
+            or self.cfg['fitter'].get('pso_template_guided_initialization', False)
+        ):
+            guided_fraction = float(
+                self.cfg['fitter'].get(
+                    'template_guided_fraction',
+                    self.cfg['fitter'].get('pso_template_guided_fraction', 0.5),
+                )
+            )
+            guided_sigma = float(
+                self.cfg['fitter'].get(
+                    'template_guided_sigma',
+                    self.cfg['fitter'].get('pso_template_guided_sigma', 0.15),
+                )
+            )
+            if not 0.0 < guided_fraction <= 1.0:
+                raise ValueError('template_guided_fraction must be in (0, 1]')
+            if guided_sigma <= 0.0:
+                raise ValueError('template_guided_sigma must be positive')
+            guided_count = max(1, min(n, int(round(n * guided_fraction))))
+            nest = np.random.uniform(lb, ub, size=(n, dim)).astype(np.float32)
+            nest[0] = 0.0
+            if guided_count > 1:
+                nest[1:guided_count] = np.clip(
+                    np.random.normal(0.0, guided_sigma, size=(guided_count - 1, dim)),
+                    lb,
+                    ub,
+                ).astype(np.float32)
+            initialization_info = {
+                'mode': 'template_zero_action_with_gaussian_neighborhood',
+                'guided_count': guided_count,
+                'random_count': n - guided_count,
+                'guided_fraction': guided_fraction,
+                'guided_sigma': guided_sigma,
+            }
+            self.record.guided_initialization = initialization_info
+            print(f'[CS] template-guided initialization: {initialization_info}')
         else:
             for i in range(n):
                 nest[i, :] = lb + (ub - lb) * np.random.random_sample(dim)
         fitness = self.estimate(solutions=nest)
 
-        best_score = 0.
-        best_action = nest[np.argmax(fitness), :].copy()  # 初始最优
+        initial_best = int(np.argmax(fitness))
+        best_score = float(fitness[initial_best])
+        best_action = nest[initial_best, :].copy()
         max_estimations = self.cfg['fitter']['max_episode']
         estimations = n
 
-        while estimations < max_estimations:
+        while estimations + 2 * n <= max_estimations:
             best_nest = nest[np.argmax(fitness), :]
             new_nest = get_cuckoos(nest, best_nest, lb, ub)
             f_new, best_nest, nest, fitness = self._get_best_nest(nest, new_nest, fitness)
@@ -137,6 +177,8 @@ class Fitter:
                 best_action = best_nest.copy()  # 持久化最优nest
 
         self.best_action_ = best_action  # 供GD warm-start获取
+        self.evaluations_ = estimations
+        self.record.num_evaluations = estimations
         return best_score
 
     def fit(self):

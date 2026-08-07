@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="zh-CN" data-lang="both">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nature-style Robust Procedural Model Fitting Architecture</title>
+  <style>
+    :root {
+      --ink: #202124;
+      --subtle: #60656f;
+      --line: #aeb4bd;
+      --line-light: #d9dde2;
+      --paper: #ffffff;
+      --blue: #3c69a8;
+      --blue-soft: #eef4fa;
+      --teal: #3a8780;
+      --teal-soft: #edf7f5;
+      --orange: #d67952;
+      --orange-soft: #fbf1eb;
+      --violet: #76649a;
+      --violet-soft: #f3f0f7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background: #f3f3f1;
+      font-family: Arial, Helvetica, "Microsoft YaHei", sans-serif;
+      font-weight: 400;
+    }
+
+    .page {
+      width: min(1500px, calc(100% - 32px));
+      margin: 24px auto;
+      padding: 28px 34px 22px;
+      background: var(--paper);
+      box-shadow: 0 6px 24px rgba(32, 33, 36, .09);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--ink);
+    }
+
+    .figure-no {
+      margin: 0 0 4px;
+      color: var(--subtle);
+      font-size: 12px;
+      letter-spacing: .05em;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(21px, 2.1vw, 31px);
+      font-weight: 500;
+      letter-spacing: -.018em;
+    }
+
+    .en {
+      display: block;
+      margin-top: 3px;
+      color: var(--subtle);
+      font-size: .76em;
+      font-weight: 400;
+    }
+
+    html[data-lang="zh"] .en,
+    html[data-lang="en"] .zh { display: none !important; }
+
+    html[data-lang="en"] .en {
+      margin-top: 0;
+      color: inherit;
+      font-size: 1em;
+    }
+
+    .language {
+      display: flex;
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+    }
+
+    .language button {
+      padding: 7px 11px;
+      border: 0;
+      border-right: 1px solid var(--line);
+      color: var(--subtle);
+      background: var(--paper);
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .language button:last-child { border-right: 0; }
+    .language button[aria-pressed="true"] { color: var(--paper); background: var(--ink); }
+
+    .schematic {
+      display: grid;
+      grid-template-columns: minmax(145px, .85fr) 52px minmax(700px, 4fr) 52px minmax(160px, .95fr);
+      align-items: center;
+      gap: 0;
+      padding: 30px 0 25px;
+    }
+
+    .endpoint {
+      min-width: 0;
+      text-align: center;
+    }
+
+    .endpoint h2,
+    .framework-title,
+    .block h3,
+    .evaluation h2 {
+      margin: 0;
+      font-weight: 500;
+    }
+
+    .endpoint h2 { margin-top: 14px; font-size: 16px; }
+
+    .endpoint p {
+      margin: 7px 0 0;
+      color: var(--subtle);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .point-cloud {
+      position: relative;
+      width: 128px;
+      height: 128px;
+      margin: 0 auto;
+      border: 1px solid var(--line-light);
+      border-radius: 50%;
+      background: #fafafa;
+    }
+
+    .point-cloud i {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--blue);
+    }
+
+    .point-cloud i:nth-child(1) { left: 28px; top: 28px; }
+    .point-cloud i:nth-child(2) { left: 44px; top: 20px; }
+    .point-cloud i:nth-child(3) { left: 61px; top: 21px; }
+    .point-cloud i:nth-child(4) { left: 77px; top: 27px; }
+    .point-cloud i:nth-child(5) { left: 92px; top: 39px; }
+    .point-cloud i:nth-child(6) { left: 23px; top: 46px; }
+    .point-cloud i:nth-child(7) { left: 39px; top: 43px; }
+    .point-cloud i:nth-child(8) { left: 73px; top: 44px; }
+    .point-cloud i:nth-child(9) { left: 98px; top: 58px; }
+    .point-cloud i:nth-child(10) { left: 20px; top: 65px; }
+    .point-cloud i:nth-child(11) { left: 37px; top: 68px; }
+    .point-cloud i:nth-child(12) { left: 82px; top: 65px; }
+    .point-cloud i:nth-child(13) { left: 93px; top: 78px; }
+    .point-cloud i:nth-child(14) { left: 29px; top: 86px; }
+    .point-cloud i:nth-child(15) { left: 47px; top: 96px; }
+    .point-cloud i:nth-child(16) { left: 65px; top: 100px; }
+    .point-cloud i:nth-child(17) { left: 79px; top: 91px; }
+    .point-cloud i:nth-child(18) { left: 108px; top: 21px; background: var(--orange); }
+    .point-cloud i:nth-child(19) { left: 8px; top: 94px; background: var(--orange); }
+    .point-cloud i:nth-child(20) { left: 107px; top: 101px; background: var(--orange); }
+
+    .point-cloud.clean i:nth-child(18),
+    .point-cloud.clean i:nth-child(19),
+    .point-cloud.clean i:nth-child(20) { display: none; }
+
+    .point-cloud.clean::after {
+      position: absolute;
+      inset: 19px 24px;
+      border: 1.5px solid var(--teal);
+      border-radius: 47% 53% 50% 50% / 38% 42% 58% 62%;
+      content: "";
+      transform: rotate(-8deg);
+    }
+
+    .arrow {
+      position: relative;
+      height: 1px;
+      background: var(--ink);
+    }
+
+    .arrow::after {
+      position: absolute;
+      top: -4px;
+      right: -1px;
+      width: 8px;
+      height: 8px;
+      border-top: 1px solid var(--ink);
+      border-right: 1px solid var(--ink);
+      content: "";
+      transform: rotate(45deg);
+    }
+
+    .framework {
+      position: relative;
+      padding: 20px 22px 18px;
+      border: 1px solid var(--line);
+    }
+
+    .framework-title {
+      position: absolute;
+      top: -10px;
+      left: 18px;
+      padding: 0 8px;
+      background: var(--paper);
+      font-size: 14px;
+    }
+
+    .forward-flow {
+      display: grid;
+      grid-template-columns: minmax(130px, 1fr) 32px minmax(130px, 1fr) 32px minmax(150px, 1.08fr);
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .block {
+      display: flex;
+      min-height: 152px;
+      flex-direction: column;
+      justify-content: center;
+      padding: 15px 13px;
+      text-align: center;
+    }
+
+    .block.model { background: var(--blue-soft); }
+    .block.sampling { background: var(--teal-soft); }
+    .block.similarity { background: var(--orange-soft); }
+
+    .block-number {
+      display: grid;
+      width: 24px;
+      height: 24px;
+      margin: 0 auto 10px;
+      place-items: center;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      color: var(--subtle);
+      font-size: 11px;
+    }
+
+    .block h3 { font-size: 14px; }
+
+    .block p {
+      margin: 8px 0 0;
+      color: var(--subtle);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .inner-arrow {
+      position: relative;
+      align-self: center;
+      height: 1px;
+      background: var(--line);
+    }
+
+    .inner-arrow::after {
+      position: absolute;
+      top: -3px;
+      right: 0;
+      width: 6px;
+      height: 6px;
+      border-top: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      content: "";
+      transform: rotate(45deg);
+    }
+
+    .model-types {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      margin-top: 9px;
+    }
+
+    .shape {
+      display: grid;
+      width: 34px;
+      height: 28px;
+      place-items: center;
+      border: 1px solid #94a9c4;
+      color: var(--blue);
+      background: var(--paper);
+      font-size: 10px;
+    }
+
+    .loop-area {
+      display: grid;
+      grid-template-columns: 1fr 42px 1fr;
+      align-items: center;
+      width: 72%;
+      margin: 18px auto 0;
+    }
+
+    .parameter,
+    .optimizer {
+      padding: 10px 12px;
+      border: 1px solid #b9afca;
+      background: var(--violet-soft);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .optimizer strong { font-weight: 500; }
+
+    .loop-arrow {
+      position: relative;
+      height: 1px;
+      background: var(--violet);
+    }
+
+    .loop-arrow::after {
+      position: absolute;
+      top: -3px;
+      right: 0;
+      width: 6px;
+      height: 6px;
+      border-top: 1px solid var(--violet);
+      border-right: 1px solid var(--violet);
+      content: "";
+      transform: rotate(45deg);
+    }
+
+    .feedback {
+      position: relative;
+      width: calc(72% - 4px);
+      height: 26px;
+      margin: 0 auto;
+      border-right: 1px dashed var(--violet);
+      border-bottom: 1px dashed var(--violet);
+      border-left: 1px dashed var(--violet);
+    }
+
+    .feedback::before {
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      width: 7px;
+      height: 7px;
+      border-top: 1px solid var(--violet);
+      border-left: 1px solid var(--violet);
+      content: "";
+      transform: rotate(45deg);
+    }
+
+    .feedback-label {
+      position: absolute;
+      right: 12px;
+      bottom: 5px;
+      padding: 0 5px;
+      color: var(--subtle);
+      background: var(--paper);
+      font-size: 10px;
+    }
+
+    .evaluation {
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      align-items: center;
+      gap: 22px;
+      padding: 14px 0;
+      border-top: 1px solid var(--line-light);
+      border-bottom: 1px solid var(--line-light);
+    }
+
+    .evaluation h2 { font-size: 14px; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .metric {
+      padding-left: 10px;
+      border-left: 3px solid var(--teal);
+      font-size: 12px;
+    }
+
+    .metric .en { font-size: 10px; }
+
+    .caption {
+      margin: 15px 0 0;
+      color: var(--subtle);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .caption strong { color: var(--ink); font-weight: 500; }
+
+    @media (max-width: 1050px) {
+      .schematic {
+        grid-template-columns: 150px 40px 1fr;
+        row-gap: 22px;
+      }
+      .schematic > .arrow:last-of-type { grid-column: 1 / 2; transform: rotate(90deg); }
+      .endpoint.output { grid-column: 2 / 4; }
+      .forward-flow { grid-template-columns: 1fr 28px 1fr 28px 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      .page { width: calc(100% - 16px); margin: 8px auto; padding: 20px 15px; }
+      .topbar { flex-direction: column; }
+      .language { width: 100%; }
+      .language button { flex: 1; }
+      .schematic { display: flex; flex-direction: column; gap: 0; }
+      .endpoint { width: 100%; }
+      .schematic > .arrow { width: 34px; margin: 20px 0; transform: rotate(90deg); }
+      .framework { width: 100%; padding: 22px 12px 14px; }
+      .forward-flow { display: flex; flex-direction: column; }
+      .inner-arrow { width: 28px; height: 28px; margin: 0 auto; background: transparent; transform: rotate(90deg); }
+      .inner-arrow::before { position: absolute; top: 13px; width: 28px; height: 1px; background: var(--line); content: ""; }
+      .block { min-height: 120px; }
+      .loop-area { width: 100%; }
+      .feedback { width: calc(100% - 4px); }
+      .evaluation { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media print {
+      @page { size: landscape; margin: 8mm; }
+      body { background: #fff; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .page { width: 100%; margin: 0; padding: 10px 15px; box-shadow: none; }
+      .language { display: none; }
+      .schematic { padding-block: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div>
+        <p class="figure-no">Fig. 1 | Conceptual framework</p>
+        <h1>
+          <span class="zh">鲁棒程序化模型拟合框架</span>
+          <span class="en">Robust procedural model fitting framework</span>
+        </h1>
+      </div>
+      <nav class="language" aria-label="Language">
+        <button type="button" data-language="both" aria-pressed="true">中英</button>
+        <button type="button" data-language="zh" aria-pressed="false">中文</button>
+        <button type="button" data-language="en" aria-pressed="false">English</button>
+      </nav>
+    </header>
+
+    <section class="schematic" aria-label="Robust procedural fitting workflow">
+      <section class="endpoint input">
+        <div class="point-cloud" aria-label="Imperfect point cloud illustration">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <h2><span class="zh">不完美观测</span><span class="en">Imperfect observation</span></h2>
+        <p><span class="zh">噪声 · 离群点 · 缺失 · 遮挡</span><span class="en">Noise · outliers · missing data · occlusion</span></p>
+      </section>
+
+      <div class="arrow" aria-hidden="true"></div>
+
+      <section class="framework">
+        <h2 class="framework-title"><span class="zh">鲁棒程序化拟合闭环</span><span class="en">Robust procedural fitting loop</span></h2>
+
+        <div class="forward-flow">
+          <section class="block model">
+            <span class="block-number">1</span>
+            <h3><span class="zh">程序化模型</span><span class="en">Procedural model</span></h3>
+            <div class="model-types" aria-label="Model types">
+              <span class="shape">A</span>
+              <span class="shape">CYL</span>
+              <span class="shape">SQ</span>
+            </div>
+            <p><span class="zh">字符 · 圆柱 · 超二次曲面</span><span class="en">Character · cylinder · superquadric</span></p>
+          </section>
+
+          <div class="inner-arrow" aria-hidden="true"></div>
+
+          <section class="block sampling">
+            <span class="block-number">2</span>
+            <h3><span class="zh">模型生成与采样</span><span class="en">Generation and sampling</span></h3>
+            <p><span class="zh">均匀参数采样<br>面积加权采样</span><span class="en">Uniform parametric sampling<br>Area-weighted sampling</span></p>
+          </section>
+
+          <div class="inner-arrow" aria-hidden="true"></div>
+
+          <section class="block similarity">
+            <span class="block-number">3</span>
+            <h3><span class="zh">鲁棒相似度</span><span class="en">Robust similarity</span></h3>
+            <p><span class="zh">MM / WMM<br>可选覆盖率约束</span><span class="en">MM / WMM<br>Optional coverage constraint</span></p>
+          </section>
+        </div>
+
+        <div class="loop-area">
+          <div class="parameter"><span class="zh">候选参数 θ</span><span class="en">Candidate parameters θ</span></div>
+          <div class="loop-arrow" aria-hidden="true"></div>
+          <div class="optimizer"><strong><span class="zh">共享优化接口</span><span class="en">Shared optimizer interface</span></strong><br>CCO · CS · PSO · DE</div>
+        </div>
+        <div class="feedback">
+          <span class="feedback-label"><span class="zh">相似度得分驱动参数更新</span><span class="en">Similarity-guided parameter update</span></span>
+        </div>
+      </section>
+
+      <div class="arrow" aria-hidden="true"></div>
+
+      <section class="endpoint output">
+        <div class="point-cloud clean" aria-label="Fitted clean model illustration">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <h2><span class="zh">最优拟合模型</span><span class="en">Optimal fitted model</span></h2>
+        <p><span class="zh">估计参数 θ* 与干净模型点云</span><span class="en">Estimated θ* and clean model cloud</span></p>
+      </section>
+    </section>
+
+    <section class="evaluation">
+      <h2><span class="zh">独立干净参考评估</span><span class="en">Clean-reference evaluation</span></h2>
+      <div class="metrics">
+        <div class="metric">Chamfer distance</div>
+        <div class="metric">F-score</div>
+        <div class="metric"><span class="zh">参数误差</span><span class="en">Parameter error</span></div>
+        <div class="metric"><span class="zh">恢复成功率</span><span class="en">Recovery success rate</span></div>
+      </div>
+    </section>
+
+    <p class="caption">
+      <strong><span class="zh">图 1｜</span><span class="en">Fig. 1 | </span></strong>
+      <span class="zh">鲁棒程序化模型拟合框架。程序化模型经生成与采样后，通过鲁棒相似度与不完美观测进行比较；CCO、CS、PSO 和 DE 通过统一接口更新候选参数，并在相同参数边界、配对随机种子和函数评估预算下进行公平比较。</span>
+      <span class="en">Robust procedural model fitting framework. A procedural model is generated and sampled, then compared with imperfect observations using a robust similarity measure. CCO, CS, PSO and DE update candidate parameters through a shared interface and are compared under identical bounds, paired seeds and function-evaluation budgets.</span>
+    </p>
+  </main>
+
+  <script>
+    const root = document.documentElement;
+    const languageButtons = document.querySelectorAll('[data-language]');
+    languageButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        root.dataset.lang = button.dataset.language;
+        root.lang = button.dataset.language === 'en' ? 'en' : 'zh-CN';
+        languageButtons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+      });
+    });
+  </script>
+</body>
+</html>

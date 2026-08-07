@@ -188,7 +188,13 @@ class Collector:
         return self._pipe_parents[env_id].poll()
     
     def receive(self, env_id):
-        return self._pipe_parents[env_id].recv()
+        result = self._pipe_parents[env_id].recv()
+        # Worker exceptions are serialized through the pipe.  Returning one as
+        # if it were a normal ``(scores, record)`` payload hides the original
+        # traceback behind a misleading unpacking TypeError in the optimizer.
+        if isinstance(result, BaseException):
+            raise result
+        return result
 
     def estimate(self, env_id, actions):
         self._pipe_parents[env_id].send(['estimate', [actions], {}])
@@ -216,7 +222,9 @@ class Collector:
     def receive_all(self):
         for env_id in range(self.num_envs):
             try:
-                self._pipe_parents[env_id].recv()
+                result = self._pipe_parents[env_id].recv()
+                if isinstance(result, BaseException):
+                    raise result
             except pickle.UnpicklingError as e:
                 assert False                           
         

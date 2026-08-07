@@ -1,0 +1,45 @@
+# PMF-style planar-surface proxy on the bundled laser-scanning cloud.
+# This is NOT the paper's original 18-parameter, five-level CGA facade M8.
+task_type: '3d'
+run_id: 1
+data_file: 'datasets/surface/cloud1.ply'
+
+model:
+  type: 'surface'
+
+device:
+  train_device: 'cuda:0'
+  cuda_deterministic: true
+seeds: null
+
+estimator:
+  type: 'mm'
+  data_resolution: 'auto'
+  model_resolution: 'auto'
+  early_rejection: true
+  regularization_factor: 1.0
+  open3d_version: 'legacy'
+
+fitter:
+  algo_name: 'cco'
+  num_instances: 1
+  num_envs: 1
+  episodes_per_env: 8
+  # Population is 8. 9992 = 8 * 1249 (an odd multiple), so both CCO and
+  # two-stage CS stop at exactly the same number of objective evaluations.
+  max_episode: 9992
+
+collector:
+  name: 'hybrid'
+  num_episodes_per_rollout: 4
+  num_rollouts: 2
+  parallel: true
+  context: 'spawn'
+  reinforcement_episode_size: 30
+  evaluation_episode_size: 10
+
+record:
+  pulse_size: 1000
+  visualization: null
+  use_thread_time: false
+  verbose: true

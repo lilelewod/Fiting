@@ -1,0 +1,26 @@
+# Machine-local editor and agent state
+/.idea/
+/.vscode/
+/.codex
+
+# Experiment outputs live outside version control.
+/outputs/
+
+# Generated benchmark data are transferred separately.
+/fitting/datasets/pmf_cylinder/
+/fitting/datasets/superquadric_v2/
+
+# Local scratch and rendered-paper build products.
+/fitting/tmp/
+/fitting/paper/ieee_superquadric/$build/
+/fitting/paper/ieee_superquadric/$out/
+/fitting/paper/ieee_superquadric/tmp/
+/fitting/paper/ieee_superquadric/output/
+/fitting/paper/ieee_superquadric/main.aux
+/fitting/paper/ieee_superquadric/main.bbl
+/fitting/paper/ieee_superquadric/main.blg
+/fitting/paper/ieee_superquadric/main.fdb_latexmk
+/fitting/paper/ieee_superquadric/main.fls
+/fitting/paper/ieee_superquadric/main.log
+/fitting/paper/ieee_superquadric/main.pdf
+/fitting/paper/ieee_superquadric/runtime_diagnosis_zh.md

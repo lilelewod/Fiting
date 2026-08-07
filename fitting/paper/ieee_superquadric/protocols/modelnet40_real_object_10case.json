@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "protocol_name": "modelnet40_real_object_10case_guided_pso",
+  "frozen_before_fitting": true,
+  "data_root": "C:\\code\\datasets\\modelnet40\\real10_robustness",
+  "dataset_manifest": "C:\\code\\datasets\\modelnet40\\real10_robustness\\manifest.json",
+  "selection_rule": "For each preregistered category, select the lexicographically first N successful entries in the pre-existing area-sampled benchmark manifest.",
+  "cases": [
+    "bottle_0338",
+    "bottle_0348",
+    "bowl_0065",
+    "bowl_0066",
+    "cone_0168",
+    "flower_pot_0150",
+    "glass_box_0172",
+    "vase_0489",
+    "vase_0492",
+    "xbox_0104"
+  ],
+  "case_categories": {
+    "bottle_0338": "bottle",
+    "bottle_0348": "bottle",
+    "bowl_0065": "bowl",
+    "bowl_0066": "bowl",
+    "cone_0168": "cone",
+    "flower_pot_0150": "flower_pot",
+    "glass_box_0172": "glass_box",
+    "vase_0489": "vase",
+    "vase_0492": "vase",
+    "xbox_0104": "xbox"
+  },
+  "case_directories": {
+    "bottle_0338": "C:\\code\\datasets\\modelnet40\\real10_robustness\\bottle\\bottle_0338",
+    "bottle_0348": "C:\\code\\datasets\\modelnet40\\real10_robustness\\bottle\\bottle_0348",
+    "bowl_0065": "C:\\code\\datasets\\modelnet40\\real10_robustness\\bowl\\bowl_0065",
+    "bowl_0066": "C:\\code\\datasets\\modelnet40\\real10_robustness\\bowl\\bowl_0066",
+    "cone_0168": "C:\\code\\datasets\\modelnet40\\real10_robustness\\cone\\cone_0168",
+    "flower_pot_0150": "C:\\code\\datasets\\modelnet40\\real10_robustness\\flower_pot\\flower_pot_0150",
+    "glass_box_0172": "C:\\code\\datasets\\modelnet40\\real10_robustness\\glass_box\\glass_box_0172",
+    "vase_0489": "C:\\code\\datasets\\modelnet40\\real10_robustness\\vase\\vase_0489",
+    "vase_0492": "C:\\code\\datasets\\modelnet40\\real10_robustness\\vase\\vase_0492",
+    "xbox_0104": "C:\\code\\datasets\\modelnet40\\real10_robustness\\xbox\\xbox_0104"
+  },
+  "conditions": {
+    "clean": {
+      "file": "clean.ply",
+      "guided_support_fraction": 1.0
+    },
+    "noise": {
+      "file": "noise_0p5pct_diag.ply",
+      "guided_support_fraction": 1.0
+    },
+    "outlier_20": {
+      "file": "outlier_20.ply",
+      "guided_support_fraction": 0.75
+    },
+    "partial_view": {
+      "file": "partial_view_40missing.ply",
+      "guided_support_fraction": 1.0
+    }
+  },
+  "guided_pso": {
+    "population_size": 16,
+    "max_evaluations": 10000,
+    "paired_base_seeds": [
+      20260803,
+      20260804,
+      20260805
+    ],
+    "guided_fraction": 0.75,
+    "guided_jitter": 0.04,
+    "extent_quantile": 0.005,
+    "support_neighbors": 8
+  },
+  "pilot": {
+    "seed": 20260803,
+    "scope": "all 10 cases and all four conditions"
+  },
+  "independent_evaluation": {
+    "reference_file": "reference.ply",
+    "reference_points": 20000,
+    "reference_mode": "provided independent area-sampled full mesh",
+    "fscore_distance_threshold": 0.01,
+    "chamfer_screening_threshold": 0.05,
+    "interpretation": "shape-approximation quality, not exact parameter recovery"
+  }
+}

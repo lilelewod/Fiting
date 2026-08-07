@@ -1,0 +1,57 @@
+{
+  "status": "revised-before-formal-adaptive-support-runs",
+  "registered_date": "2026-07-21",
+  "purpose": "Separate failure of the MM estimator on gross outliers from failure of PSO search.",
+  "dataset": {
+    "root": "datasets/pmf_cylinder",
+    "conditions": ["clean", "outlier_50", "outlier_80"],
+    "provenance": "PMF-style reconstruction; not the original PMF D5/D6 point clouds"
+  },
+  "optimizer": "pso",
+  "population_size": 80,
+  "max_evaluations": 50000,
+  "paired_base_seeds": [20260911, 20260912, 20260913, 20260914, 20260915],
+  "variants": [
+    {
+      "name": "full_input",
+      "density_support_mode": "fixed",
+      "density_support_fraction": 1.0,
+      "density_support_neighbors": 16
+    },
+    {
+      "name": "adaptive_density",
+      "density_support_mode": "adaptive",
+      "density_support_fraction": 1.0,
+      "density_support_neighbors": 16
+    }
+  ],
+  "selection_rationale": "A deterministic two-cluster split of log 16-NN distances retains the cluster with the smaller median distance. It does not require a contamination ratio or labels. Ground-truth labels are used only for post-hoc selection-quality analysis.",
+  "revision_history": "A non-formal pilot with seed 20260901 used a fixed 20% support. It recovered radius but truncated height/span (Chamfer 0.52088, F-score 0.80826), showing that a fixed fraction discarded too many inliers at 50% contamination. No formal seed is reused from that pilot.",
+  "selection_quality_before_fit": {
+    "outlier_50": {
+      "selected_points": 2056,
+      "selected_fraction": 0.501953125,
+      "inlier_precision": 0.9956225680933852,
+      "inlier_recall": 0.99951171875,
+      "occupied_angle_bins_12": 12,
+      "occupied_height_bins_6": 6
+    },
+    "outlier_80": {
+      "selected_points": 2050,
+      "selected_fraction": 0.2001953125,
+      "inlier_precision": 0.9936585365853658,
+      "inlier_recall": 0.99462890625,
+      "occupied_angle_bins_12": 12,
+      "occupied_height_bins_6": 6
+    }
+  },
+  "evaluation": {
+    "reference": "datasets/pmf_cylinder/clean.ply",
+    "success_definition": "Same fixed Chamfer and F-score thresholds as the main experiment"
+  },
+  "reporting": {
+    "paired_unit": "seed within condition",
+    "metrics": ["clean-reference Chamfer", "clean-reference F-score", "success", "wall time"],
+    "interpretation": "Any gain belongs to robust support preprocessing, not to PSO itself."
+  }
+}

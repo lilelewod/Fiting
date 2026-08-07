@@ -25,7 +25,8 @@ def lev(n, m):
 
     u = np.random.normal(0, sigma_u, (n, m))
     v = np.random.normal(0, 1, (n, m))
-    levy = 0.05 * u / (np.abs(v) ** (-Beta))
+    # Mantegna's algorithm for a symmetric Levy stable distribution.
+    levy = 0.05 * u / (np.abs(v) ** (1.0 / Beta) + np.finfo(float).eps)
     return levy
 
 
@@ -53,6 +54,8 @@ class Fitter:
         self.action_dim = self.collector.get_action_dim()
         self.episodes_per_env = int(self.cfg['fitter']['episodes_per_env'])
         self.population_size = self.num_envs * self.episodes_per_env
+        if self.population_size < 4:
+            raise ValueError("CCO requires num_envs * episodes_per_env >= 4")
 
         data_cloud = self.collector.launch()
         self.record = Record(cfg, dimension=data_cloud.shape[1])
@@ -280,6 +283,8 @@ class Fitter:
 
         # 循环结束，返回找到的最优得分
         self.best_action_ = BestX.copy()  # 供GD warm-start获取
+        self.evaluations_ = iteration
+        self.record.num_evaluations = iteration
         return BestF
 
     def fit(self):

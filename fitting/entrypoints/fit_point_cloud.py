@@ -40,6 +40,10 @@ def get_rule_class(cfg):
         from models.surface.cylinder_rule import CylinderRule
 
         return CylinderRule
+    if model_type == 'pmf_cylinder':
+        from models.surface.pmf_cylinder_rule import PMFCylinderRule
+
+        return PMFCylinderRule
     if model_type == 'sphere':
         from models.surface.sphere_rule import SphereRule
 
@@ -59,6 +63,10 @@ def run_experiment(cfg):
         from core.optimizer.gd_fitter import Fitter
     elif algo == 'cs':
         from core.optimizer.cs_fitter import Fitter
+    elif algo == 'pso':
+        from core.optimizer.pso_fitter import Fitter
+    elif algo == 'de':
+        from core.optimizer.de_fitter import Fitter
     elif algo == 'ala':
         from core.optimizer.ala_fitter import Fitter
     elif algo == 'spsa':
@@ -84,10 +92,11 @@ def run_experiment(cfg):
         print(f"  Chamfer:          {rec.chamfer:.6f}")
         print(f"  D→M mean:         {rec.d2m:.6f}")
         print(f"  M→D mean:         {rec.m2d:.6f}")
-        print(f"  F5@0.05:          {rec.f5:.6f}")
+        print(f"  F-score @{rec.metric_threshold:.6g}:  {rec.f5:.6f}")
         print(f"  Coverage <0.01:   {rec.coverage_001:.4%}")
         print(f"  Coverage <0.05:   {rec.coverage_005:.4%}")
         print(f"{'='*50}\n")
+    return rec
 
 
 def get_estimator_class(cfg):
@@ -127,9 +136,9 @@ def prepare_3d_cfg(base_cfg):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='configs/fit_mm_compare.yaml')
-    parser.add_argument('--algo', type=str, default=None, choices=['cco', 'gd', 'cs', 'ala', 'spsa', 'memetic', 'hierarchical', 'aes'])
+    parser.add_argument('--algo', type=str, default=None, choices=['cco', 'cs', 'pso', 'de', 'gd', 'ala', 'spsa', 'memetic', 'hierarchical', 'aes'])
     parser.add_argument('--estimator', type=str, default=None, choices=['npre', 'gd', 'mm'])
-    parser.add_argument('--model', type=str, default=None, choices=['curve', 'surface', 'nurbs_surface', 'cylinder', 'sphere', 'superquadric'])
+    parser.add_argument('--model', type=str, default=None, choices=['curve', 'surface', 'nurbs_surface', 'cylinder', 'pmf_cylinder', 'sphere', 'superquadric'])
     parser.add_argument('--data-file', type=str, default=None)
     parser.add_argument('--num-instances', type=int, default=None)
     parser.add_argument('--num-envs', type=int, default=None)
@@ -139,6 +148,7 @@ def main():
     parser.add_argument('--model-resolution', type=float, default=None)
     parser.add_argument('--visualization', type=str, default=None, choices=['parallel', 'non-parallel', 'none'])
     parser.add_argument('--runs', type=int, default=1)
+    parser.add_argument('--seed', type=int, default=None, help='Base seed; run i uses seed + i for reproducible experiments.')
     args = parser.parse_args()
 
     with open(args.config, 'r', encoding='utf-8') as f:
@@ -185,6 +195,9 @@ def main():
 
     for i in range(args.runs):
         cfg = deepcopy(base_cfg)
+        if args.seed is not None:
+            seed_sequence = np.random.SeedSequence(args.seed + i)
+            cfg['seeds'] = [int(x) for x in seed_sequence.generate_state(int(cfg['fitter']['num_envs']) + 1)]
         timestamp = current_timestamp()
         cfg["record"]["timestamp"] = timestamp
         print(f"\n[{timestamp}] Start run ({i + 1}/{args.runs})")

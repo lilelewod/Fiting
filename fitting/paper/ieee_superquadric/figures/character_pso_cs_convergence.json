@@ -1,0 +1,43 @@
+{
+  "max_evaluations": 10000,
+  "series": {
+    "PSO": {
+      "records": 10,
+      "patterns": [
+        "C:\\code\\Fiting\\outputs\\pso\\character\\saltpepper_noise\\0.6\\*\\noisy_*\\2026-0723\\*\\record.json"
+      ],
+      "final_center": 66.47807252151591,
+      "record_files": [
+        "C:\\code\\Fiting\\outputs\\pso\\character\\saltpepper_noise\\0.6\\0\\noisy_1\\2026-0723\\1442-01\\record.json",
+        "C:\\code\\Fiting\\outputs\\pso\\character\\saltpepper_noise\\0.6\\0\\noisy_17\\2026-0723\\1439-34\\record.json",
+        "C:\\code\\Fiting\\outputs\\pso\\character\\saltpepper_noise\\0.6\\0\\noisy_20\\2026-0723\\1449-13\\record.json",
+        "C:\\code\\Fiting\\outputs\\pso\\character\\saltpepper_noise\\0.6\\0\\noisy_4\\2026-0723\\1456-10\\record.json",
+        "C:\\code\\Fiting\\outputs\\pso\\character\\saltpepper_noise\\0.6\\0\\noisy_7\\2026-0723\\1458-04\\record.json",
+        "C:\\code\\Fiting\\outputs\\pso\\character\\saltpepper_noise\\0.6\\1\\noisy_1\\2026-0723\\1433-38\\record.json",
+        "C:\\code\\Fiting\\outputs\\pso\\character\\saltpepper_noise\\0.6\\2\\noisy_1\\2026-0723\\1444-47\\record.json",
+        "C:\\code\\Fiting\\outputs\\pso\\character\\saltpepper_noise\\0.6\\2\\noisy_2\\2026-0723\\1451-30\\record.json",
+        "C:\\code\\Fiting\\outputs\\pso\\character\\saltpepper_noise\\0.6\\3\\noisy_1\\2026-0723\\1447-07\\record.json",
+        "C:\\code\\Fiting\\outputs\\pso\\character\\saltpepper_noise\\0.6\\3\\noisy_2\\2026-0723\\1454-08\\record.json"
+      ]
+    },
+    "CS": {
+      "records": 10,
+      "patterns": [
+        "C:\\code\\Fiting\\outputs\\cs\\character\\saltpepper_noise\\0.6\\*\\noisy_*\\2026-0723\\*\\record.json"
+      ],
+      "final_center": 64.43144462494853,
+      "record_files": [
+        "C:\\code\\Fiting\\outputs\\cs\\character\\saltpepper_noise\\0.6\\0\\noisy_1\\2026-0723\\1443-24\\record.json",
+        "C:\\code\\Fiting\\outputs\\cs\\character\\saltpepper_noise\\0.6\\0\\noisy_17\\2026-0723\\1440-44\\record.json",
+        "C:\\code\\Fiting\\outputs\\cs\\character\\saltpepper_noise\\0.6\\0\\noisy_20\\2026-0723\\1450-20\\record.json",
+        "C:\\code\\Fiting\\outputs\\cs\\character\\saltpepper_noise\\0.6\\0\\noisy_4\\2026-0723\\1457-07\\record.json",
+        "C:\\code\\Fiting\\outputs\\cs\\character\\saltpepper_noise\\0.6\\0\\noisy_7\\2026-0723\\1459-27\\record.json",
+        "C:\\code\\Fiting\\outputs\\cs\\character\\saltpepper_noise\\0.6\\1\\noisy_1\\2026-0723\\1435-18\\record.json",
+        "C:\\code\\Fiting\\outputs\\cs\\character\\saltpepper_noise\\0.6\\2\\noisy_1\\2026-0723\\1445-56\\record.json",
+        "C:\\code\\Fiting\\outputs\\cs\\character\\saltpepper_noise\\0.6\\2\\noisy_2\\2026-0723\\1452-49\\record.json",
+        "C:\\code\\Fiting\\outputs\\cs\\character\\saltpepper_noise\\0.6\\3\\noisy_1\\2026-0723\\1448-09\\record.json",
+        "C:\\code\\Fiting\\outputs\\cs\\character\\saltpepper_noise\\0.6\\3\\noisy_2\\2026-0723\\1455-11\\record.json"
+      ]
+    }
+  }
+}

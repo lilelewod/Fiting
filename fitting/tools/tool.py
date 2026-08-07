@@ -45,10 +45,24 @@ def compute_reward_to_go(rews):
     return rtgs
 
 def json_default(o):
+    if isinstance(o, np.ndarray):
+        return o.tolist()
+    if isinstance(o, np.generic):
+        return o.item()
+    if isinstance(o, torch.Tensor):
+        return o.detach().cpu().tolist()
+    if isinstance(o, torch.device):
+        return str(o)
+    if isinstance(o, pathlib.Path):
+        return str(o)
     if inspect.isfunction(o) or inspect.isclass(o):
         return f'<from {o.__module__} import {o.__name__}>'
-    else:
-        return '<not serializable>'
+    # Geometric traits are small value objects. Persisting their parameters is
+    # required to reproduce a fitted surface; large estimator/token objects are
+    # intentionally left out of the JSON record.
+    if type(o).__name__.endswith('Trait') and hasattr(o, '__dict__'):
+        return dict(o.__dict__)
+    return '<not serializable>'
 
 # set project root directory as current working directory
 def set_project_root_as_working_directory(file):

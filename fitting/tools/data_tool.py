@@ -1,5 +1,7 @@
+import numpy as np
+
+
 def read_point_cloud(file_name):
-    import numpy as np
     file_type = file_name[-3:]
     if 'xyz' == file_type:
         x, y, z = [], [], []
@@ -50,10 +52,33 @@ def load_ply_data(estimator):
     estimator.raw_data = data.copy()
     voxel_size_for_down_sampling = cfg.get('voxel_size_for_down_sampling', None)
     if voxel_size_for_down_sampling is None:
-        assert 'data_resolution' in cfg
-        assert 'model_resolution' in cfg
-        estimator.data_resolution = cfg['data_resolution']
-        estimator.model_resolution = cfg['model_resolution']        
+        configured_resolution = cfg.get('data_resolution', 'auto')
+        if configured_resolution is None or str(configured_resolution).lower() == 'auto':
+            from sklearn.neighbors import KDTree
+
+            nearest = KDTree(data).query(data, k=2, return_distance=True)[0][:, 1]
+            nearest = nearest[np.isfinite(nearest) & (nearest > 0.0)]
+            if nearest.size:
+                estimator.data_resolution = float(np.median(nearest))
+            else:
+                extent = float(np.linalg.norm(data.max(0) - data.min(0)))
+                estimator.data_resolution = max(
+                    extent / max(data.shape[0] ** (1.0 / data.shape[1]), 1.0),
+                    np.finfo(np.float32).eps,
+                )
+            print(f'auto data resolution: {estimator.data_resolution:.6g}')
+        else:
+            estimator.data_resolution = float(configured_resolution)
+
+        configured_model_resolution = cfg.get('model_resolution', 'auto')
+        if configured_model_resolution is None or str(configured_model_resolution).lower() == 'auto':
+            estimator.model_resolution = 0.45 * estimator.data_resolution
+        else:
+            estimator.model_resolution = float(configured_model_resolution)
+        # Persist resolved numeric values so Record and spawned workers do not
+        # later encounter the configuration sentinel string "auto".
+        cfg['data_resolution'] = estimator.data_resolution
+        cfg['model_resolution'] = estimator.model_resolution
     else:
         import point_cloud_utils as pcu
         data = pcu.downsample_point_cloud_on_voxel_grid(voxel_size_for_down_sampling, data)

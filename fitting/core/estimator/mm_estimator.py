@@ -6,6 +6,7 @@ from sklearn.neighbors import KDTree
 
 from models.rule import Token
 from tools.geometry import compute_resolution
+from tools.superquadric_initialization import adaptive_density_support, density_support
 
 try:
     import point_cloud_utils as pcu
@@ -21,6 +22,11 @@ try:
     import faiss
 except ModuleNotFoundError:
     faiss = None
+
+try:
+    import torch
+except ModuleNotFoundError:
+    torch = None
 
 
 class MeanMeasureEstimator:
@@ -61,6 +67,7 @@ class MeanMeasureEstimator:
         self.overlap_ratio = 0.0
         self.outlier_ratio = 0.0
         self.bbox_violation_ratio = 0.0
+        self.coverage_ratio = 1.0
         self.control_smoothness = 0.0
 
         self.measure = 0.0
@@ -69,8 +76,30 @@ class MeanMeasureEstimator:
         self.score_mm = 0.0
 
         # FAISS GPU 加速
-        self._use_faiss = faiss is not None and cfg['estimator'].get('use_faiss', False)
+        requested_backend = str(estimator_cfg.get("nearest_neighbor_backend", "legacy"))
+        if requested_backend not in {"legacy", "sklearn", "faiss", "torch_cuda"}:
+            raise ValueError(
+                "nearest_neighbor_backend must be legacy, sklearn, faiss, or torch_cuda"
+            )
+        if requested_backend == "torch_cuda":
+            if torch is None or not torch.cuda.is_available():
+                raise RuntimeError("torch_cuda nearest-neighbor backend requires CUDA PyTorch")
+            self._nearest_neighbor_backend = "torch_cuda"
+        elif requested_backend == "faiss":
+            if faiss is None:
+                raise RuntimeError("faiss nearest-neighbor backend requested but FAISS is unavailable")
+            self._nearest_neighbor_backend = "faiss"
+        elif requested_backend == "sklearn":
+            self._nearest_neighbor_backend = "sklearn"
+        else:
+            self._nearest_neighbor_backend = (
+                "faiss" if faiss is not None and estimator_cfg.get("use_faiss", False) else "sklearn"
+            )
+        self._use_faiss = self._nearest_neighbor_backend == "faiss"
         self._faiss_index = None
+        self._torch_data = None
+        self._torch_device = None
+        self._torch_cached_data_to_model_errors = None
         self._last_model_to_data_time = 0.0
         self.token = None
         self.model_color = None
@@ -80,7 +109,14 @@ class MeanMeasureEstimator:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == "rule":
+            if k in {
+                "_torch_data",
+                "_torch_device",
+                "_torch_cached_data_to_model_errors",
+                "_faiss_index",
+            }:
+                setattr(result, k, None)
+            elif k == "rule":
                 setattr(result, k, deepcopy(v, memo))
                 if result.rule is not None:
                     result.rule.estimator = result
@@ -93,6 +129,28 @@ class MeanMeasureEstimator:
         load_data_fn = self.cfg["estimator"]["load_data_fn"]
         data = load_data_fn(self)
         self.raw_data = data.copy()
+        estimator_cfg = self.cfg["estimator"]
+        support_mode = str(estimator_cfg.get("density_support_mode", "fixed"))
+        support_fraction = float(estimator_cfg.get("density_support_fraction", 1.0))
+        support_neighbors = int(estimator_cfg.get("density_support_neighbors", 8))
+        if support_mode not in {"fixed", "adaptive"}:
+            raise ValueError("density_support_mode must be 'fixed' or 'adaptive'")
+        if not 0.0 < support_fraction <= 1.0:
+            raise ValueError("density_support_fraction must lie in (0, 1]")
+        if support_neighbors < 2:
+            raise ValueError("density_support_neighbors must be at least 2")
+        if support_mode == "adaptive":
+            data = adaptive_density_support(data, support_neighbors)
+        elif support_fraction < 1.0:
+            data = density_support(data, support_fraction, support_neighbors)
+        self.density_support_info = {
+            "raw_points": int(self.raw_data.shape[0]),
+            "support_points": int(data.shape[0]),
+            "support_fraction": support_fraction,
+            "actual_support_fraction": float(data.shape[0] / self.raw_data.shape[0]),
+            "support_neighbors": support_neighbors,
+            "support_mode": support_mode,
+        }
         self.dimension = data.shape[1]
         if self.data_resolution is None:
             self.preprocess(data)
@@ -124,6 +182,8 @@ class MeanMeasureEstimator:
         self.min_point = self.data.min(0)
         self.max_point = self.data.max(0)
         self.data_kDTree = KDTree(self.data)
+        if hasattr(self, "_torch_data"):
+            self._torch_data = None
 
         self.model_resolution = cfg.get("model_resolution", 0.45 * self.data_resolution)
         assert self.model_resolution < 0.5 * self.data_resolution
@@ -136,6 +196,8 @@ class MeanMeasureEstimator:
         self.dimension = data.shape[1]
         self.num_data_points = data.shape[0]
         self.data_kDTree = KDTree(data)
+        if hasattr(self, "_torch_data"):
+            self._torch_data = None
         self.min_point = np.min(data, axis=0)
         self.max_point = np.max(data, axis=0)
 
@@ -170,6 +232,8 @@ class MeanMeasureEstimator:
         self.token = None
         self.model_color = None
         self.control_smoothness = 0.0
+        self.coverage_ratio = 1.0
+        self._torch_cached_data_to_model_errors = None
 
     def update(self, supporters, sum_errors, num_points):
         self.base_sum_errors = deepcopy(sum_errors)
@@ -212,7 +276,25 @@ class MeanMeasureEstimator:
 
         normalized_error = error / self.data_resolution
         self.score_mm = (self.measure ** self.regularization_factor) / normalized_error
-        self.score = self.score_mm
+
+        # MM is model-to-data directed. For a single closed primitive this can
+        # otherwise reward a surface that matches only part of the observation.
+        # The optional coverage factor adds the complementary data-to-model term.
+        score = self.score_mm
+        cfg = self.cfg["estimator"]
+        if cfg.get("incremental_coverage", False):
+            coverage_power = float(cfg.get("coverage_power", 1.0))
+            score *= max(float(self.coverage_ratio), np.finfo(np.float32).eps) ** coverage_power
+
+        penalty = 1.0
+        penalty += float(cfg.get("outlier_penalty_factor", 0.0)) * self.outlier_ratio
+        penalty += (
+            float(cfg.get("bbox_penalty_factor", 0.0))
+            + float(cfg.get("mm_bbox_penalty_factor", 0.0))
+        ) * self.bbox_violation_ratio
+        penalty += float(cfg.get("overlap_penalty_factor", 0.0)) * self.overlap_ratio
+        penalty += float(cfg.get("control_smoothness_penalty_factor", 0.0)) * self.control_smoothness
+        self.score = score / penalty
         return self.score
 
     # ---- model-to-data error ----
@@ -223,22 +305,64 @@ class MeanMeasureEstimator:
         self._faiss_index = faiss.IndexFlatL2(data.shape[1])
         self._faiss_index.add(data)
 
-    def compute_model_to_data_error(self, points):
+    def _torch_cuda_bidirectional_nearest(self, points):
+        """Return CPU-exact distances to neighbors selected on CUDA."""
+        if self._torch_device is None:
+            configured = str(self.cfg.get("device", "cuda:0"))
+            self._torch_device = torch.device(configured if "cuda" in configured else "cuda:0")
+        if self._torch_data is None:
+            self._torch_data = torch.as_tensor(
+                np.ascontiguousarray(self.data, dtype=np.float32), device=self._torch_device
+            )
+        model = torch.as_tensor(
+            np.ascontiguousarray(points, dtype=np.float32), device=self._torch_device
+        )
+        distances = torch.cdist(model, self._torch_data, compute_mode="use_mm_for_euclid_dist")
+        model_indexes = distances.argmin(dim=1).cpu().numpy().astype(np.int64, copy=False)
+        data_indexes = distances.argmin(dim=0).cpu().numpy().astype(np.int64, copy=False)
+        del distances, model
+
+        points64 = np.asarray(points, dtype=np.float64)
+        data64 = np.asarray(self.data, dtype=np.float64)
+        model_errors = np.linalg.norm(points64 - data64[model_indexes], axis=1)
+        data_errors = np.linalg.norm(data64 - points64[data_indexes], axis=1)
+        self._torch_cached_data_to_model_errors = data_errors
+        return model_errors, model_indexes
+
+    def compute_model_to_data_error(self, points, sample_weights=None):
         if self.data_kDTree is None:
             print("no data")
             return np.inf, np.empty(0, dtype=np.int64)
 
         t0 = time.perf_counter()
-        if self._use_faiss and points.shape[0] >= 32:
+        if self._nearest_neighbor_backend == "torch_cuda" and points.shape[0] >= 32:
+            errors, indexes = self._torch_cuda_bidirectional_nearest(points)
+            indexes = indexes[:, None]
+        elif self._use_faiss and points.shape[0] >= 32:
             self._build_faiss_index()
             points_f32 = np.ascontiguousarray(points, dtype=np.float32)
             distances_sq, idx = self._faiss_index.search(points_f32, 1)
             errors = np.sqrt(np.maximum(distances_sq[:, 0], 0.0))
             indexes = np.asarray(idx, dtype=np.int64)
-            sum_errors = float(np.sum(errors))
         else:
             errors, indexes = self.data_kDTree.query(points)
-            sum_errors = float(np.sum(errors))
+        errors = np.asarray(errors).reshape(-1)
+
+        if sample_weights is None:
+            normalized_weights = np.ones(points.shape[0], dtype=np.float64)
+        else:
+            normalized_weights = np.asarray(sample_weights, dtype=np.float64).reshape(-1)
+            if normalized_weights.shape[0] != points.shape[0]:
+                raise ValueError("token.weights must have one value per sampled point")
+            if not np.all(np.isfinite(normalized_weights)) or np.any(normalized_weights < 0.0):
+                raise ValueError("token.weights must be finite and non-negative")
+            weight_sum = float(normalized_weights.sum())
+            if weight_sum <= 0.0:
+                raise ValueError("token.weights must have a positive sum")
+            # Preserve the existing sum_errors / num_points accumulator while
+            # making that quotient an area-weighted mean distance.
+            normalized_weights *= points.shape[0] / weight_sum
+        sum_errors = float(np.dot(errors, normalized_weights))
         self._last_model_to_data_time = time.perf_counter() - t0
         new_supporters = indexes[:, 0]
         outlier_distance_factor = float(
@@ -246,7 +370,10 @@ class MeanMeasureEstimator:
         )
         if outlier_distance_factor > 0.0:
             max_distance = outlier_distance_factor * float(self.data_resolution)
-            self.outlier_ratio = float(np.mean(errors > max_distance))
+            self.outlier_ratio = float(
+                np.dot((errors > max_distance).astype(np.float64), normalized_weights)
+                / normalized_weights.sum()
+            )
         else:
             self.outlier_ratio = 0.0
 
@@ -255,7 +382,10 @@ class MeanMeasureEstimator:
             margin = bbox_margin_factor * float(self.data_resolution)
             below = points < (self.min_point - margin)
             above = points > (self.max_point + margin)
-            self.bbox_violation_ratio = float(np.mean(np.any(below | above, axis=1)))
+            self.bbox_violation_ratio = float(
+                np.dot(np.any(below | above, axis=1).astype(np.float64), normalized_weights)
+                / normalized_weights.sum()
+            )
         else:
             self.bbox_violation_ratio = 0.0
 
@@ -273,6 +403,20 @@ class MeanMeasureEstimator:
         self.supporters = np.unique(np.concatenate((self.supporters, new_supporters)))
         self.nearest_points = deepcopy(self.supporters)
         return sum_errors, new_supporters
+
+    def compute_data_coverage(self, points):
+        """Fraction of observed points explained by the candidate surface."""
+        factor = float(self.cfg["estimator"].get("coverage_distance_factor", 5.0))
+        threshold = max(factor * float(self.data_resolution), np.finfo(np.float32).eps)
+        if (
+            self._nearest_neighbor_backend == "torch_cuda"
+            and self._torch_cached_data_to_model_errors is not None
+        ):
+            distances = self._torch_cached_data_to_model_errors
+            self._torch_cached_data_to_model_errors = None
+        else:
+            distances = KDTree(points).query(self.data, k=1, return_distance=True)[0].reshape(-1)
+        return float(np.mean(distances <= threshold))
 
     def _coerce_points(self, points):
         if o3d is not None:
@@ -301,12 +445,15 @@ class MeanMeasureEstimator:
             self.single_model_error = float("inf")
             return
 
-        sum_errors, supporters = self.compute_model_to_data_error(points)
+        sample_weights = getattr(token, "weights", None)
+        sum_errors, supporters = self.compute_model_to_data_error(points, sample_weights)
         self.single_model_error = sum_errors / float(points.shape[0])
 
         token.supporters = supporters
         token.sum_errors = sum_errors
         self.control_smoothness = self.compute_control_smoothness(token)
+        if self.cfg["estimator"].get("incremental_coverage", False):
+            self.coverage_ratio = self.compute_data_coverage(points)
 
         self.sum_errors += sum_errors
         self.num_points += points.shape[0]

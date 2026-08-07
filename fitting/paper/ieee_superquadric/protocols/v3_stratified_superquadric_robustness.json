@@ -1,0 +1,80 @@
+{
+  "status": "pre-registered-before-corrupted-condition Guided-PSO runs",
+  "registered_date": "2026-07-21",
+  "purpose": "Measure degradation of the posed-superquadric extension under noise, gross outliers, random sparsity, and spatially coherent occlusion.",
+  "data_root": "C:/code/superquadic_data/v3_randomized",
+  "cases": [
+    "case_000", "case_001", "case_002",
+    "case_003", "case_004", "case_005",
+    "case_006", "case_007", "case_008"
+  ],
+  "case_selection": "The first nine cases form one complete 3x3 shape-stratum by aspect-stratum block and were used in the completed clean study.",
+  "conditions": {
+    "clean": {
+      "file": "clean.ply",
+      "status": "reuse completed five-seed results"
+    },
+    "noise_1pct_diag": {
+      "file": "noise_1pct_diag.ply",
+      "noise_sigma_fraction_reference_bbox_diagonal": 0.01
+    },
+    "outlier_20": {
+      "file": "outlier_20.ply",
+      "gross_outlier_fraction": 0.20
+    },
+    "missing_80": {
+      "file": "missing_80.ply",
+      "random_missing_fraction": 0.80
+    },
+    "occlusion_cap_80": {
+      "file": "occlusion_cap_80.ply",
+      "spatially_coherent_missing_fraction": 0.80,
+      "construction": "retain a contiguous top-projection surface cap"
+    }
+  },
+  "guided_pso": {
+    "paired_base_seeds": [20260716, 20260717, 20260718, 20260719, 20260720],
+    "population_size": 16,
+    "max_evaluations": 10000,
+    "guided_fraction": 0.75,
+    "guided_jitter": 0.04,
+    "extent_quantile": 0.005,
+    "support_neighbors": 8,
+    "initialization_support_fraction": {
+      "clean": 1.0,
+      "noise_1pct_diag": 1.0,
+      "outlier_20": 0.75,
+      "missing_80": 1.0,
+      "occlusion_cap_80": 1.0
+    },
+    "estimator_resolution": "Use each case's clean-derived data_resolution and model_resolution unchanged for every condition.",
+    "estimator_density_preprocessing": "none; robust support affects initialization only"
+  },
+  "ems": {
+    "implementation": "bmlklwx/EMS-superquadric_fitting",
+    "implementation_commit": "5a213d46e8b013b5a153f5aa914b0925ee517af7",
+    "outlier_prior": 0.1,
+    "max_iteration_em": 20,
+    "max_optimization_iterations": 3,
+    "max_switches": 2,
+    "adaptive_upper_bound": false,
+    "note": "Existing clean/noise/outlier/random-missing fits are reused; coherent-occlusion fits are new. EMS is a specialized accuracy reference, not FE-matched to PSO."
+  },
+  "independent_evaluation": {
+    "reference": "analytic area-uniform surface generated from trait.json",
+    "reference_points": 20000,
+    "model_points": 20000,
+    "grid_resolution": 256,
+    "reference_seed": 20260716,
+    "model_seed": 20260717,
+    "chamfer_success_threshold": 0.05,
+    "fscore_distance_threshold": 0.05
+  },
+  "reporting": {
+    "pso_within_condition": "run-level median, IQR, and success rate; retain all five seeds",
+    "robustness_unit": "per-case median under corruption paired with the same case's clean median",
+    "ems_comparison_unit": "per-case Guided-PSO median paired with deterministic EMS",
+    "statistics": "exact two-sided Wilcoxon signed-rank over nine independent cases",
+    "failure_rule": "Random missingness must not be described as occlusion; spatial-cap results are reported separately."
+  }
+}

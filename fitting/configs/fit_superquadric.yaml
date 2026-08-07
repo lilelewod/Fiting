@@ -10,20 +10,28 @@ data_file: '/home/m25lll/code/Fiting/fitting/datasets/synthetic/superq_ellipsoid
 # ── 模型: 超二次曲面 (11D: center×3 + scale×3 + shape×2 + rotation×3) ──
 model:
   type: 'superquadric'
+  # 等角度网格；MM 会使用每个顶点的面积权重消除极区采样偏差
+  sample_eta: 96
+  sample_omega: 96
+  # true: local triangle-area quadrature; false: uniform angular-sample mean
+  use_area_weights: true
 
 # ── 设备 ──
 device:
-  train_device: 'cuda:1'
+  train_device: 'cuda:0'
   cuda_deterministic: true
 seeds: null
 
 # ── 评分器: Mean Measure (λ=0.5) ──
 estimator:
   type: 'mm'
-  data_resolution: 0.01
-  model_resolution: 0.004
+  # 按输入点云的中位最近邻距离自动适配坐标单位
+  data_resolution: 'auto'
+  model_resolution: 'auto'
   regularization_factor: 0.5
   incremental_coverage: true
+  coverage_distance_factor: 5.0
+  coverage_power: 1.0
   outlier_distance_factor: 2.5
   outlier_penalty_factor: 0.0
   bbox_margin_factor: 1.0
@@ -36,10 +44,11 @@ estimator:
 
 # ── 优化器 ──
 fitter:
-  algo_name: 'memetic'
+  algo_name: 'cco'
   num_instances: 1
 
-  max_episode: 50000
+  # Maximum number of objective-function evaluations (not iteration count).
+  max_episode: 10000
 
   # Memetic (NL-SHADE + Adam refiner)
   gd_lr: 0.01
@@ -61,8 +70,29 @@ fitter:
   aes_num_iters: 200
 
   # CCO/CS 参数
-  num_envs: 8
-  episodes_per_env: 50
+  # 单卡先从单进程开始；CCO 的种群大小为 num_envs * episodes_per_env
+  num_envs: 1
+  episodes_per_env: 16
+
+  # PSO baseline (Shi--Eberhart style inertia schedule)
+  pso_inertia_start: 0.9
+  pso_inertia_end: 0.4
+  pso_cognitive: 2.0
+  pso_social: 2.0
+  pso_velocity_scale: 0.1
+  pso_velocity_limit: 0.2
+  # Optional geometry-guided initial population. Disabled for legacy baselines.
+  pso_guided_initialization: false
+  pso_guided_fraction: 0.75
+  pso_guided_jitter: 0.04
+  pso_guided_extent_quantile: 0.005
+  # Set to 0.75 for label-free kNN density trimming under sparse gross outliers.
+  pso_guided_support_fraction: 1.0
+  pso_guided_support_neighbors: 8
+
+  # DE/rand/1/bin baseline
+  de_weight: 0.5
+  de_crossover_rate: 0.9
 
 # ── 输出 ──
 record:
